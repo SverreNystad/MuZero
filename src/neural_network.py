@@ -109,5 +109,8 @@ class PredictionNetwork(nn.Module):
             value (Tensor): State value estimate (batch, 1).
         """
         policy_logits = self.policy_head(latent)
+        policy_logits = F.softmax(policy_logits, dim=1)
+
         value = self.value_head(latent)
+
         return policy_logits, value
