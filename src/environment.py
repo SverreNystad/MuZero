@@ -65,7 +65,7 @@ class Environment(Protocol):
             action (int): The action taken by the agent.
 
         Returns:
-            observation (Any): The agent’s observation of the current environment.
+            state (Any): The next observation from the environment.
             reward (float): The reward for the taken action.
             done (bool): Whether the episode has ended.
 
