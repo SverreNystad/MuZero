@@ -63,11 +63,11 @@ class DynamicsNetwork(nn.Module):
         self.reward_head = nn.Linear(latent_dim, 1)
 
     def forward(
-        self, latent: torch.Tensor, action_logits: torch.Tensor
+        self, latent_state: torch.Tensor, action_logits: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
-            latent (Tensor): Current latent state of shape (batch, latent_dim).
+            latent_state (Tensor): Current latent state of shape (batch, latent_dim).
            - action_logits (Tensor): Unnormalized log-probabilities over actions (batch, num_actions).
         Returns:
             next_latent (Tensor): Predicted next latent state (batch, latent_dim).
@@ -75,9 +75,9 @@ class DynamicsNetwork(nn.Module):
         """
         # One-hot encode the action
         action_onehot = F.one_hot(
-            action_logits, num_classes=self.fc1.in_features - latent.size(1)
+            action_logits, num_classes=self.fc1.in_features - latent_state.size(1)
         ).float()
-        x = torch.cat([latent, action_onehot], dim=1)
+        x = torch.cat([latent_state, action_onehot], dim=1)
         x = F.relu(self.fc1(x))
         next_latent = torch.tanh(self.fc2(x))
         reward = self.reward_head(x)
@@ -100,17 +100,17 @@ class PredictionNetwork(nn.Module):
         # Value head: outputs a scalar value
         self.value_head = nn.Linear(latent_dim, 1)
 
-    def forward(self, latent: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, latent_state: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
-            latent (Tensor): Latent state of shape (batch, latent_dim).
+            latent_state (Tensor): Latent state of shape (batch, latent_dim).
         Returns:
             policy_logits (Tensor): Unnormalized log-probabilities over actions (batch, num_actions).
             value (Tensor): State value estimate (batch, 1).
         """
-        policy_logits = self.policy_head(latent)
+        policy_logits = self.policy_head(latent_state)
         policy_logits = F.softmax(policy_logits, dim=1)
 
-        value = self.value_head(latent)
+        value = self.value_head(latent_state)
 
         return policy_logits, value
