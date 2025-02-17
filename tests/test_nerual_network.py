@@ -15,17 +15,19 @@ def test_representation_network_forward(batch_size):
     of correct shape and returns the correct latent shape.
     """
     input_channels = 3
-    board_size = (8, 8)
+    observation_space = (8, 8)
     latent_dim = 16
 
     # Create a RepresentationNetwork
     repr_net = RepresentationNetwork(
-        input_channels=input_channels, latent_dim=latent_dim, board_size=board_size
+        input_channels=input_channels,
+        latent_dim=latent_dim,
+        observation_space=observation_space,
     )
 
     # Create a dummy observation
     # Shape: (batch_size, channels, height, width)
-    observation = torch.randn(batch_size, input_channels, *board_size)
+    observation = torch.randn(batch_size, input_channels, *observation_space)
 
     # Forward pass
     latent = repr_net(observation)

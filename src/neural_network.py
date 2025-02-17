@@ -11,13 +11,12 @@ import torch.nn.functional as F
 
 
 class RepresentationNetwork(nn.Module):
-    def __init__(self, input_channels: int, board_size: tuple, latent_dim: int):
+    def __init__(self, input_channels: int, observation_space: tuple, latent_dim: int):
         """
         Maps the raw observation (e.g. an image) to an abstract latent state.
         Args:
             input_channels (int): Number of channels in the input observation.
-            board_size (tuple): Spatial dimensions (height, width) of the input.
-            board_size (tuple): Spatial dimensions (row) of the input.
+            observation_space (tuple): Spatial dimensions like (height, width) of the observation or (x,y,z).
             latent_dim (int): Dimension of the latent state.
         """
         super(RepresentationNetwork, self).__init__()
@@ -27,8 +26,8 @@ class RepresentationNetwork(nn.Module):
 
         # Calculate the size of the output of the convolutional layers
         conv_output_size: int = self.conv2.out_channels
-        for dim in range(len(board_size)):
-            conv_output_size *= board_size[dim]
+        for dim in range(len(observation_space)):
+            conv_output_size *= observation_space[dim]
 
         self.fc = nn.Linear(conv_output_size, latent_dim)
 
