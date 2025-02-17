@@ -1,7 +1,8 @@
+from typing import Any, Union
 from src.environment import Environment
 
 
-def create_environment(env_config) -> Environment:
+def create_environment(env_config: Union[Any]) -> Environment:
 
     match env_config:
         # TODO: add more cases here
