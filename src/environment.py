@@ -1,3 +1,4 @@
+from torch import Tensor
 from typing import Protocol, Tuple, Any
 
 """
@@ -37,16 +38,23 @@ class Environment(Protocol):
     """
 
     @property
-    def action_space(self) -> Any:
+    def action_space(self) -> Tensor:
         """
         The action space of the environment.
         """
         ...
 
     @property
-    def observation_space(self) -> Any:
+    def observation_space(self) -> Tensor:
         """
         The observation space of the environment.
+        """
+        ...
+
+    @property
+    def state(self) -> Tensor:
+        """
+        The current state of the environment.
         """
         ...
 
