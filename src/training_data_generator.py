@@ -23,7 +23,15 @@ class Episode:
     states: list[GameState]
 
 class TrainingDataGenerator:
-    def __init__(self, env: Environment, mcts: function, repr_net: RepresentationNetwork, dyn_net: DynamicsNetwork, pred_net: PredictionNetwork, config: dict):
+    def __init__(
+        self,
+        env: Environment,
+        mcts: callable,
+        repr_net: RepresentationNetwork,
+        dyn_net: DynamicsNetwork,
+        pred_net: PredictionNetwork,
+        config: dict,
+    ):
         self.env = env
         self.mcts = mcts
         self.repr_net = repr_net
