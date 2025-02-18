@@ -30,7 +30,7 @@ nvidia-cusparse-cu12==12.5.7.53
 nvidia-cusparselt-cu12==0.6.2
 nvidia-nccl-cu12==2.25.1
 nvidia-nvjitlink-cu12==12.8.61
-nvidia-nvtx-cu12==12.4.127
+nvidia-nvtx-cu12==12.8.55
 packaging==24.2
 parso==0.8.4
 pexpect==4.9.0
