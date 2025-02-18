@@ -9,7 +9,7 @@ on:
 permissions:
   pull-requests: write
   contents: write
-  
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,6 +20,10 @@ jobs:
       - name: Build docker image and run tests
         run: |
             echo "Bulding and testing..."
+            docker compose build
+            docker compose run model python -m pytest
+            docker compose up -d
+            docker compose down
 
 
   dependabot:
