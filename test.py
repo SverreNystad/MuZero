@@ -1,5 +1,6 @@
-from src.environments.connect_four import ConnectFour
+from src.environments.connect_four import ConnectFour, ConnectFourConfig
 
-env = ConnectFour()
+config = ConnectFourConfig()
+env = ConnectFour(config=config)
 
-print(env.render("rgb_array"))
+print(env.render())
