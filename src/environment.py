@@ -38,35 +38,20 @@ class Environment(Protocol):
     - close(): Cleans up resources used by the environment.
     """
 
-    @property
-    def action_space(self) -> Tensor:
+    def get_action_space(self) -> tuple:
         """
         The action space of the environment.
         """
         ...
 
-    @property
-    def observation_space(self) -> Tensor:
+   
+    def get_observation_space(self) -> tuple:
         """
         The observation space of the environment.
         """
         ...
 
-    @property
-    def state(self) -> Tensor:
-        """
-        The current state of the environment.
-        """
-        ...
-
-    @property
-    def set_random(self, seed: int) -> None:
-        """
-        Set the random seed for the environment.
-        """
-        ...
-
-    def step(self, action: int) -> Tuple[Any, float, bool]:
+    def step(self, action: int) -> tuple[Tensor, float, bool]:
         """
         Run one timestep of the environment’s dynamics.
 
@@ -84,7 +69,7 @@ class Environment(Protocol):
         """
         ...
 
-    def get_pytorch_state(self) -> Tensor:
+    def get_state(self) -> Tensor:
         """
         Get the current state of the environment as a PyTorch tensor.
 
