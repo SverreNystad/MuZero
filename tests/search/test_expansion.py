@@ -2,12 +2,17 @@ from src.search.expansion import expand_node
 from src.neural_network import DynamicsNetwork
 from src.search.nodes import Node
 import torch
+import pytest
 
 
-def test_expanding_leaf_node():
-    batch_size = 2
-    action_space = 2
-    latent_dim = 10
+@pytest.mark.parametrize(
+    "batch_size" "action_space" "latent_dim",
+    [
+        (2, 2, 10),
+        (3, 3, 5),
+    ],
+)
+def test_expanding_leaf_node(batch_size, action_space, latent_dim):
     latent_state = torch.randn(batch_size, latent_dim)
     root = Node(latent_state)
     dynamics_network = DynamicsNetwork(latent_dim, action_space)
