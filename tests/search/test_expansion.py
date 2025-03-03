@@ -6,10 +6,15 @@ import torch
 
 def test_expanding_leaf_node():
     batch_size = 2
-    latent_state = torch.randn(batch_size, 10)
+    action_space = 2
+    latent_dim = 10
+    latent_state = torch.randn(batch_size, latent_dim)
     root = Node(latent_state)
-    dynamics_network = DynamicsNetwork(10, 2)
+    dynamics_network = DynamicsNetwork(latent_dim, action_space)
     assert len(root.children) == 0
-    possible_actions = [torch.tensor([1] * batch_size), torch.tensor([0] * batch_size)]
+    possible_actions = []
+    for i in range(action_space):
+        possible_actions.append(torch.tensor([i] * batch_size))
+
     expand_node(root, possible_actions, dynamics_network)
     assert len(root.children) == len(possible_actions)
