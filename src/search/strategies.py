@@ -20,14 +20,6 @@ class SelectionStrategy(Protocol):
         ...
 
 
-class ExpansionStrategy(Protocol):
-    def __call__(self, node: Node) -> Node:
-        """
-        Expand the given node by adding one or more child nodes and return one of them.
-        """
-        ...
-
-
 class SimulationStrategy(Protocol):
     def __call__(self, node: Node) -> float:
         """
