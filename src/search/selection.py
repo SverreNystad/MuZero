@@ -41,7 +41,7 @@ class PUCT(SelectionStrategy):
         self.c2 = c2
         self.discount = discount
 
-    def uct_score(self, node: Node) -> float:
+    def puct_score(self, node: Node) -> float:
         pb_c = math.sqrt(node.parent.visit_count) / (node.visit_count + 1)
         pb_c *= math.log((node.visit_count + self.c2 + 1) / self.c2) + self.c1
 
@@ -56,5 +56,5 @@ class PUCT(SelectionStrategy):
 
     def __call__(self, root: Node) -> Node:
         while len(root.children.values()) > 0:
-            root = max(root.children.values(), key=self.uct_score)
+            root = max(root.children.values(), key=self.puct_score)
         return root
