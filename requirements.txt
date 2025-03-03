@@ -1,10 +1,13 @@
 asttokens==3.0.0
+cloudpickle==3.1.1
 comm==0.2.2
 debugpy==1.8.12
 decorator==5.1.1
 executing==2.2.0
+Farama-Notifications==0.0.4
 filelock==3.17.0
 fsspec==2025.2.0
+gymnasium==1.1.0
 iniconfig==2.0.0
 ipykernel==6.29.5
 ipython==8.32.0
@@ -33,6 +36,7 @@ nvidia-nvjitlink-cu12==12.4.127
 nvidia-nvtx-cu12==12.4.127
 packaging==24.2
 parso==0.8.4
+pettingzoo==1.24.3
 pexpect==4.9.0
 platformdirs==4.3.6
 pluggy==1.5.0

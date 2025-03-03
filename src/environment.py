@@ -1,5 +1,6 @@
 from torch import Tensor
 from typing import Protocol, Tuple, Any
+from torch import Tensor
 
 """
 The main Gymnasium class for implementing Reinforcement Learning Agents environments.
@@ -75,11 +76,20 @@ class Environment(Protocol):
         Returns:
             state (Any): The next observation from the environment.
             reward (float): The reward for the taken action.
-            done (bool): Whether the episode has ended.
+            done (bool): Whether the episode has ended.gym connect four
 
         Note:
             In a Gymnasium environment, this function often returns an additional
             'info' dictionary. You can include that if desired.
+        """
+        ...
+
+    def get_pytorch_state(self) -> Tensor:
+        """
+        Get the current state of the environment as a PyTorch tensor.
+
+        Returns:
+            state (Tensor): The current state of the environment.
         """
         ...
 
