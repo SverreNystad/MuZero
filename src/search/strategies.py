@@ -42,7 +42,7 @@ class SimulationStrategy(Protocol):
 
 
 class BackpropagationStrategy(Protocol):
-    def __call__(self, node: Node, result: float) -> None:
+    def __call__(self, node: Node, value: float, to_play: int) -> None:
         """
         Backpropagate the simulation result up through the tree.
 
