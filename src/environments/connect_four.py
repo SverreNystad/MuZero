@@ -9,12 +9,15 @@ from gymnasium.spaces import Box
 env = connect_four_v3.env(render_mode="rgb_array")
 env.reset(seed=42)
 
+class ConnectFourConfig(BaseModel):
+    render_mode: str = "rgb_array"
+    seed: int = 42
 
 
 class ConnectFour(Environment):
-    def __init__(self):
-        self.env = connect_four_v3.env(render_mode="rgb_array")
-        self.env.reset(seed=42)
+    def __init__(self, config: ConnectFourConfig):
+        self.env = connect_four_v3.env(render_mode=config.render_mode)
+        self.env.reset(seed=config.seed)
         self.observation_space = self.env.observation_space("player_0")
 
     def get_action_space(self) -> tuple:
@@ -38,6 +41,6 @@ class ConnectFour(Environment):
         observation = self.env.last()[0]
         return from_numpy(observation["observation"])
     
-    def render(self, mode: str = "human") -> any:
+    def render(self) -> any:
         return self.env.render()
     
