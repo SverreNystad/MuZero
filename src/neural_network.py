@@ -73,10 +73,13 @@ class DynamicsNetwork(nn.Module):
             next_latent (Tensor): Predicted next latent state (batch, latent_dim).
             reward (Tensor): Predicted immediate reward (batch, 1).
         """
+        assert latent_state.size(0) == action_logits.size(0), "Batch size mismatch"
         # One-hot encode the action
         action_onehot = F.one_hot(
             action_logits, num_classes=self.fc1.in_features - latent_state.size(1)
         ).float()
+        print(f"Shape of action_onehot: {action_onehot.shape}")
+        print(f"Shape of latent_state: {latent_state.shape}")
         x = torch.cat([latent_state, action_onehot], dim=1)
         x = F.relu(self.fc1(x))
         next_latent = torch.tanh(self.fc2(x))

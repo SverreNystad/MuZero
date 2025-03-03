@@ -1,5 +1,6 @@
 annotated-types==0.7.0
 asttokens==3.0.0
+Box2D==2.3.10
 cloudpickle==3.1.1
 comm==0.2.2
 debugpy==1.8.12
@@ -8,6 +9,8 @@ executing==2.2.0
 Farama-Notifications==0.0.4
 filelock==3.17.0
 fsspec==2025.2.0
+gym==0.26.2
+gym-notices==0.0.8
 gymnasium==1.1.0
 iniconfig==2.0.0
 ipykernel==6.29.5
