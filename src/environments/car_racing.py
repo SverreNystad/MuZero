@@ -1,4 +1,4 @@
-from torch import from_numpy
+from torch import from_numpy, Tensor
 
 from gym.envs.box2d.car_racing import CarRacing as CarRacingGym
 from gym.spaces.discrete import Discrete
@@ -22,13 +22,13 @@ class CarRacing(Environment):
     def get_observation_space(self) -> tuple:
         return self.observation_space.shape
 
-    def step(self, action: int) -> tuple:
+    def step(self, action: int) -> tuple[Tensor, float, bool]:
         state = self.env.step(action)
         observation, reward, termination, truncated, info = state
         return from_numpy(observation), reward, termination
 
     def get_state(self) -> any:
-        return self.env.last()[0]
+        return from_numpy(self.env.last()[0])
 
     def reset(self) -> any:
         return self.env.reset()
