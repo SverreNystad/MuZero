@@ -6,7 +6,7 @@ import pytest
 
 
 @pytest.mark.parametrize(
-    "batch_size" "action_space" "latent_dim",
+    ("batch_size", "action_space", "latent_dim"),
     [
         (2, 2, 10),
         (3, 3, 5),
