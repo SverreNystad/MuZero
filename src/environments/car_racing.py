@@ -1,8 +1,9 @@
+from torch import from_numpy
 
 from gym.envs.box2d.car_racing import CarRacing as CarRacingGym
 from gym.spaces.discrete import Discrete
-
 from pydantic import BaseModel
+
 from src.environment import Environment
 
 class CarRacingConfig(BaseModel):
@@ -10,7 +11,7 @@ class CarRacingConfig(BaseModel):
 
 class CarRacing(Environment):
     def __init__(self, config: CarRacingConfig):
-        self.env = CarRacingGym(render_mode="rgb_array", continuous=False)
+        self.env = CarRacingGym(render_mode="human+", continuous=False)
         self.env.reset(seed=config.seed)
         self.observation_space = self.env.observation_space
 
@@ -24,7 +25,7 @@ class CarRacing(Environment):
     def step(self, action: int) -> tuple:
         state = self.env.step(action)
         observation, reward, termination, truncated, info = state
-        return observation, reward, termination
+        return from_numpy(observation), reward, termination
 
     def get_state(self) -> any:
         return self.env.last()[0]
