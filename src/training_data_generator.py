@@ -1,3 +1,6 @@
+import os
+import pickle
+import time
 from tqdm import trange
 from torch import Tensor
 from dataclasses import dataclass
@@ -95,3 +98,39 @@ class TrainingDataGenerator:
             episode_history.append(epidata)
 
         return episode_history
+
+
+DATA_FOLDER = "data/"
+
+
+def save_training_data(training_data: list[Episode]) -> str:
+    """
+    Save the list of Episode as an binary using pickle and return the path.
+    """
+    # Create the folder if it does not exist
+    if not os.path.exists(DATA_FOLDER):
+        os.makedirs(DATA_FOLDER)
+
+    date = time.time()
+    filename = f"{DATA_FOLDER}training_episodes_{len(training_data)}_at_{date}.pkl"
+    with open(filename, "wb") as f:
+        pickle.dump(training_data, f)
+    return filename
+
+
+def load_training_data(path: str) -> list[Episode]:
+    """
+    Load and return the list of Episode objects from the given path.
+    """
+
+    with open(path, "rb") as f:
+        return pickle.load(f)
+
+
+def load_all_training_data() -> list[Episode]:
+    all_files = os.listdir(DATA_FOLDER)
+    all_episodes = []
+    for file in all_files:
+        with open(DATA_FOLDER + file, "rb") as f:
+            all_episodes.extend(pickle.load(f))
+    return all_episodes
