@@ -1,7 +1,16 @@
 import os
+import pytest
 import torch
+
 from src.environments.car_racing import CarRacingConfig
 from src.environments.factory import create_environment
+
+from src.neural_network import (
+    RepresentationNetwork,
+    DynamicsNetwork,
+    PredictionNetwork,
+)
+
 from src.training_data_generator import (
     Episode,
     Chunk,
@@ -12,16 +21,85 @@ from src.training_data_generator import (
 )
 
 
-def test_generate_training_data_gives_episode_data():
+@pytest.fixture
+def car_racing_env():
+    """
+    Pytest fixture that creates and returns a CarRacing environment with a fixed seed.
+    """
     env_config = CarRacingConfig(seed=42)
-    env = create_environment(env_config)
+    return create_environment(env_config)
 
-    generator = TrainingDataGenerator(env)
 
-    training_data = generator.generate_training_data(1, 30_000)
+@pytest.fixture
+def minimal_networks(car_racing_env):
+    """
+    Returns a tuple of (rep_net, dyn_net, pred_net) with minimal dimensions
+    sufficient for a test.
+    Adjust the input_channels, observation_space, latent_dim, and num_actions
+    as needed.
+    """
+    input_channels = 3  # Typical channels for CarRacing, adjust if needed
+    observation_space = car_racing_env.get_observation_space()
+    latent_dim = 8
+    num_actions = len(car_racing_env.get_action_space())
 
-    assert len(training_data) == 1
-    assert isinstance(training_data, list[Episode])
+    rep_net = RepresentationNetwork(
+        input_channels=input_channels,
+        observation_space=observation_space,
+        latent_dim=latent_dim,
+    )
+    dyn_net = DynamicsNetwork(
+        latent_dim=latent_dim,
+        num_actions=num_actions,
+    )
+    pred_net = PredictionNetwork(
+        latent_dim=latent_dim,
+        num_actions=num_actions,
+    )
+
+    return rep_net, dyn_net, pred_net
+
+
+def test_generate_training_data_gives_episode_data(car_racing_env, minimal_networks):
+    """
+    Test that TrainingDataGenerator properly creates a list of Episode objects
+    with at least one Chunk each.
+    """
+    rep_net, dyn_net, pred_net = minimal_networks
+
+    # Example config for generating a small amount of data.
+    config = {
+        "num_episodes": 1,
+        "max_steps": 5,  # up to 5 steps per episode
+        "look_back": 1,
+        "total_time": 30000,  # may not be used in this snippet
+        "max_time_mcts": 5,  # time in seconds for MCTS (small for test)
+    }
+
+    generator = TrainingDataGenerator(
+        env=car_racing_env,
+        repr_net=rep_net,
+        dyn_net=dyn_net,
+        pred_net=pred_net,
+        config=config,
+    )
+
+    training_data = generator.generate_training_data()
+    # Check basic structure
+    assert isinstance(training_data, list)
+    assert len(training_data) == 1, "Expected exactly 1 episode."
+
+    episode = training_data[0]
+    assert isinstance(episode, Episode), "Expected Episode type."
+    assert len(episode.chunks) > 0, "Episode should contain at least one chunk."
+
+    chunk = episode.chunks[0]
+    assert isinstance(chunk, Chunk), "Expected Chunk type."
+    assert hasattr(chunk, "state"), "Chunk should have a 'state' attribute."
+    assert hasattr(chunk, "policy"), "Chunk should have a 'policy' attribute."
+    assert hasattr(chunk, "reward"), "Chunk should have a 'reward' attribute."
+    assert hasattr(chunk, "value"), "Chunk should have a 'value' attribute."
+    assert hasattr(chunk, "best_action"), "Chunk should have a 'best_action' attribute."
 
 
 def test_save_and_load_episodes():
