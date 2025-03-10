@@ -1,4 +1,4 @@
-from src.search.expansion import expand_node
+from src.search.expansion import expand_node, _transform_latent_state
 from src.neural_network import DynamicsNetwork
 from src.search.nodes import Node
 import torch
@@ -6,35 +6,28 @@ import pytest
 
 
 @pytest.mark.parametrize(
-    ("batch_size", "action_space", "latent_dim"),
+    ("actions", "latent_dim"),
     [
-        (2, 2, 10),
-        (3, 3, 5),
+        (torch.Tensor([[0], [1], [2], [3]]), 10),
+        (torch.Tensor([[0], [1], [2], [3]]), 5),
+        (torch.Tensor([[0]]), 5),
     ],
 )
-def test_expanding_leaf_node(batch_size, action_space, latent_dim):
+def test_expanding_leaf_node(actions, latent_dim):
+    batch_size = 1
+    possible_actions = actions.size(0)
     latent_state = torch.randn(batch_size, latent_dim)
     root = Node(latent_state)
-    dynamics_network = DynamicsNetwork(latent_dim, action_space)
+    dynamics_network = DynamicsNetwork(latent_dim, possible_actions)
     assert len(root.children) == 0
-    possible_actions = []
-    for i in range(action_space):
-        possible_actions.append(torch.tensor([i] * batch_size))
 
-    expand_node(root, possible_actions, dynamics_network)
+    expand_node(root, actions, dynamics_network)
     assert len(root.children) == len(possible_actions)
 
 
-def test_expanding_node_no_actions_space():
-    batch_size = 2
-    action_space = 0
-    latent_dim = 10
-    latent_state = torch.randn(batch_size, latent_dim)
-    root = Node(latent_state)
-    dynamics_network = DynamicsNetwork(latent_dim, action_space)
-    assert len(root.children) == 0
-    possible_actions = []
-    for i in range(action_space):
-        possible_actions.append(torch.tensor([i] * batch_size))
-
-    pytest.raises(ValueError, expand_node, root, possible_actions, dynamics_network)
+def test_latent_state_shape_transformer():
+    batch_size = 1
+    latent_state = torch.Tensor([[1, 2, 3]])
+    expected = torch.Tensor([[1, 2, 3] * batch_size])
+    actual = _transform_latent_state(batch_size, latent_state)
+    assert actual.shape == expected.shape
