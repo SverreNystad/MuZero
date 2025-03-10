@@ -130,7 +130,21 @@ def load_training_data(path: str) -> list[Episode]:
 def load_all_training_data() -> list[Episode]:
     all_files = os.listdir(DATA_FOLDER)
     all_episodes = []
+
     for file in all_files:
-        with open(DATA_FOLDER + file, "rb") as f:
-            all_episodes.extend(pickle.load(f))
+        file_path = os.path.join(DATA_FOLDER, file)
+
+        # Check if the file is empty
+        if os.path.getsize(file_path) == 0:
+            print(f"Skipping empty file: {file_path}")
+            continue
+
+        with open(file_path, "rb") as f:
+            try:
+                episodes = pickle.load(f)
+                all_episodes.extend(episodes)
+            except EOFError:
+                print(f"Error loading {file_path}: file is corrupted or incomplete.")
+                continue
+
     return all_episodes
