@@ -43,7 +43,7 @@ class NeuralNetworkManager:
             episode = episode_history[b]
 
             # Sample a valid starting index for unrolling
-            max_k = len(episode.states) - (self.roll_ahead + 1)
+            max_k = len(episode.chunks) - (self.roll_ahead + 1)
             if max_k < 0:
                 # Not enough steps in this episode to do roll_ahead
                 continue
@@ -51,11 +51,11 @@ class NeuralNetworkManager:
             start_idx = max(0, k - self.lookback)
 
             # Gather data
-            Sb_k = [episode.states[i].state for i in range(start_idx, k + 1)]
-            Ab_k = [episode.states[i].best_action for i in range(k, k + self.roll_ahead)]
-            Πb_k = [episode.states[i].policy for i in range(k, k + self.roll_ahead + 1)]
-            Vb_k = [episode.states[i].value  for i in range(k, k + self.roll_ahead + 1)]
-            Rb_k = [episode.states[i+1].reward for i in range(k, k + self.roll_ahead)]
+            Sb_k = [episode.chunks[i].state for i in range(start_idx, k + 1)]
+            Ab_k = [episode.chunks[i].best_action for i in range(k, k + self.roll_ahead)]
+            Πb_k = [episode.chunks[i].policy for i in range(k, k + self.roll_ahead + 1)]
+            Vb_k = [episode.chunks[i].value  for i in range(k, k + self.roll_ahead + 1)]
+            Rb_k = [episode.chunks[i+1].reward for i in range(k, k + self.roll_ahead)]
 
             # Optimize
             self.optimizer.zero_grad()
