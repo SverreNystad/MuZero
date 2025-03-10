@@ -6,8 +6,10 @@ from pydantic import BaseModel
 
 from src.environment import Environment
 
+
 class CarRacingConfig(BaseModel):
-    seed: int
+    seed: int = 42
+
 
 class CarRacing(Environment):
     def __init__(self, config: CarRacingConfig):
@@ -35,7 +37,6 @@ class CarRacing(Environment):
 
     def render(self) -> any:
         return self.env.render()
-    
+
     def close(self) -> any:
         return self.env.close()
-    
