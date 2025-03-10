@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Union
 import torch
 
 
@@ -9,7 +10,7 @@ class Node:
     """
 
     latent_state: torch.Tensor
-    parent: "Node" = None
+    parent: Union["Node", None] = None
     children: dict[torch.Tensor, "Node"] = field(default_factory=dict)
     to_play: int = field(default_factory=int)
     visit_count: int = field(default_factory=int)
