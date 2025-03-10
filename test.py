@@ -1,7 +1,6 @@
 from src.environments.connect_four import ConnectFour, ConnectFourConfig
-import gym
+from src.environments.car_racing import CarRacing, CarRacingConfig
 
-env = gym.make("CarRacing-v2", render_mode="human")
-env.reset(seed=42)
-
-env.render()
+env = CarRacing(CarRacingConfig())
+print(env.get_observation_space())
+print(env.get_action_space())
