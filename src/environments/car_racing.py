@@ -19,7 +19,7 @@ class CarRacing(Environment):
 
     def get_action_space(self) -> tuple:
         space: Discrete = self.env.action_space
-        return (space.start, space.n - 1)
+        return tuple(range(space.n))
 
     def get_observation_space(self) -> tuple:
         return self.observation_space.shape
