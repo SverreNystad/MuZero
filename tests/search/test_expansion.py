@@ -8,9 +8,9 @@ import pytest
 @pytest.mark.parametrize(
     ("actions", "latent_dim"),
     [
-        (torch.Tensor([[0], [1], [2], [3]]), 10),
-        (torch.Tensor([[0], [1], [2], [3]]), 5),
-        (torch.Tensor([[0]]), 5),
+        (torch.tensor([0, 1, 2, 3]), 10),
+        (torch.tensor([0, 1, 2, 3]), 5),
+        (torch.tensor([0]), 5),
     ],
 )
 def test_expanding_leaf_node(actions, latent_dim):
@@ -22,7 +22,7 @@ def test_expanding_leaf_node(actions, latent_dim):
     assert len(root.children) == 0
 
     expand_node(root, actions, dynamics_network)
-    assert len(root.children) == len(possible_actions)
+    assert len(root.children) == len(actions)
 
 
 def test_latent_state_shape_transformer():
