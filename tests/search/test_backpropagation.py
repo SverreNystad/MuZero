@@ -1,6 +1,6 @@
 from src.search.strategies import BackpropagationStrategy
 from src.search.nodes import Node
-from src.search.backpropegation import Backpropagation
+from src.search.backpropagation import Backpropagation
 import pytest
 import torch
 
