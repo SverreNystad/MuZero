@@ -8,4 +8,3 @@ class Backpropagation(BackpropagationStrategy):
             node.visit_count += 1
             node.value_sum += value if node.to_play == to_play else -value
             node = node.parent
-        return node
