@@ -1,5 +1,6 @@
 import time
 import torch
+import math
 
 from src.neural_network import DynamicsNetwork
 from src.search.nodes import Node
@@ -31,32 +32,41 @@ class MCTS:
         self.max_itr = max_itr
         self.max_time = max_time
 
-    def run(self, root: Node) -> None:
+    def run(self, root: Node) -> tuple[list[float], float]:
         """
         Run the Monte Carlo Tree Search algorithm mutating the tree starting at `root`.
         """
         if self.max_itr == 0:
             start_time = time.time()
             while time.time() - start_time < self.max_time:
-                chosen_node = self.selection(root)
-                created_node = expand_node(
-                    chosen_node, self.actions, self.dynamics_network
-                )
-                result = self.simulation(created_node)
-                self.backpropagation(created_node, result, root.to_play)
+                self._step(root)
         else:
             itr = 0
             while itr < self.max_itr:
-                _step(root)
+                self._step(root)
                 itr += 1
 
-        # TODO: Calculate the action probabilities and the value of the root node
+        utility = root.value_sum / root.visit_count
+        tree_policy = _soft_max(
+            [child_node.value_sum for child_node in root.children.values()]
+        )
+
+        return tree_policy, utility
 
     def _step(self, node: Node) -> None:
         """
         Run a single step of the Monte Carlo Tree Search algorithm.
         """
         chosen_node = self.selection(node)
-        created_node = expand_node(chosen_node, self.actions, self.dynamics_network)
-        result = self.simulation(created_node)
-        self.backpropagation(created_node, result, chosen_node.to_play)
+        expanded_node = expand_node(chosen_node, self.actions, self.dynamics_network)
+        value = self.simulation(expanded_node)
+        self.backpropagation(expanded_node, value, chosen_node.to_play)
+
+
+def _soft_max(values: list[float]) -> list[float]:
+    """
+    Compute the softmax of vector x in a numerically stable way.
+    """
+    exp_values = [math.exp(x) for x in values]
+    sum_exp = sum(exp_values)
+    return [x / sum_exp for x in exp_values]
