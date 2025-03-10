@@ -1,6 +1,6 @@
 from src.neural_network import DynamicsNetwork
 from src.search.nodes import Node
-from torch import Tensor, randn
+from torch import Tensor
 import random
 
 
@@ -13,6 +13,9 @@ def expand_node(
     Args:
         - node (Node): The node to expand from
     """
+    if len(possible_actions) == 0:
+        raise ValueError("No possible actions to expand the node with")
+
     for action in possible_actions:
         next_latent_state, reward = dynamics_network(node.latent_state, action)
         child = node.add_child(next_latent_state, action)
