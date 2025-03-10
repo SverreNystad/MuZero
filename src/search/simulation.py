@@ -17,7 +17,9 @@ class MuZeroSimulation(SimulationStrategy):
         Returns:
             The result of the simulation
         """
+        latent_state_batched = node.latent_state.unsqueeze(0)  # (1, latent_dim)
+
         value: torch.Tensor
-        _, value = self.predictor(node.latent_state)
+        _, value = self.predictor(latent_state_batched)
 
         return value.item()
