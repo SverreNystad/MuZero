@@ -4,6 +4,8 @@ from torch import from_numpy, Tensor
 from pydantic import BaseModel
 
 from src.environments.connect_four import ConnectFour, ConnectFourConfig
+from src.environments.car_racing import CarRacingConfig
+from src.environments.factory import create_environment
 from src.environment import Environment
 from src.neural_network import (
     RepresentationNetwork,
@@ -14,75 +16,24 @@ from src.search.factory import create_mcts
 from src.search.nodes import Node
 
 
-def preprocess_observation(
-    observation: Tensor, obs_space: tuple
-) -> tuple[Tensor, int, tuple]:
-    """
-    Preprocess the observation for the RepresentationNetwork.
-    - Converts the observation to float.
-    - If the observation is 2D (height, width), adds a channel dimension.
-    - If the observation is (height, width, channels), permutes to (channels, height, width).
-    In both cases, adds a batch dimension.
-    """
-    # Convert observation to float
-    observation = observation.float()
-
-    if len(obs_space) == 2:
-        # Assume grayscale image.
-        input_channels = 1
-        height, width = obs_space
-        if observation.dim() == 2:
-            observation = observation.unsqueeze(0)
-        observation = observation.unsqueeze(0)  # (1, 1, height, width)
-    elif len(obs_space) == 3:
-        # Assume observation is (height, width, channels)
-        height, width, ch = obs_space
-        input_channels = ch
-        if observation.dim() == 3 and observation.shape[-1] == input_channels:
-            observation = observation.permute(2, 0, 1)
-        observation = observation.unsqueeze(0)  # (1, channels, height, width)
-    else:
-        raise ValueError("Unexpected observation shape")
-
-    return observation, input_channels, (height, width)
-
-
-def get_num_actions(env: Environment) -> int:
-    """
-    Determine the number of actions from the environment's action space.
-    """
-    action_space = env.get_action_space()  # Typically a tuple, e.g., (7,)
-    if isinstance(action_space, tuple) and len(action_space) > 0:
-        return action_space[0]
-    return 7  # Fallback default
-
-
 def test_mcts():
     """
     General test: Use the Connect Four environment and real networks to run MCTS
     and verify that the root node is updated.
     """
     # Create the environment using ConnectFour with a configuration.
-    config = ConnectFourConfig(render_mode="rgb_array", seed=42)
-    env = ConnectFour(config)
+    env = create_environment(CarRacingConfig())
 
     # Get the initial observation from the environment.
     observation = env.reset()
-    obs_space = env.get_observation_space()  # e.g., (6, 7) or (6, 7, channels)
-
-    # Preprocess observation for the RepresentationNetwork.
-    observation, input_channels, spatial_dims = preprocess_observation(
-        observation, obs_space
-    )
-    height, width = spatial_dims
+    channels, height, width = env.get_observation_space()
 
     # Determine the number of actions.
-    num_actions = get_num_actions(env)
-
+    num_actions = len(env.get_action_space())
     # Instantiate the real networks.
     latent_dim = 16
     rep_net = RepresentationNetwork(
-        input_channels=input_channels,
+        input_channels=channels,
         observation_space=(height, width),
         latent_dim=latent_dim,
     )
@@ -115,26 +66,25 @@ def test_mcts():
     assert (
         root.visit_count > 0
     ), "Root node's visit count should be updated after MCTS run."
-    print("test_mcts passed.")
 
 
 def test_mcts_with_max_iterations():
     """
     Test: Ensure that MCTS terminates after the specified number of iterations.
     """
-    config = ConnectFourConfig(render_mode="rgb_array", seed=42)
-    env = ConnectFour(config)
-    observation = env.reset()
-    obs_space = env.get_observation_space()
-    observation, input_channels, spatial_dims = preprocess_observation(
-        observation, obs_space
-    )
-    height, width = spatial_dims
-    num_actions = get_num_actions(env)
+    # Create the environment using ConnectFour with a configuration.
+    env = create_environment(CarRacingConfig())
 
+    # Get the initial observation from the environment.
+    observation = env.reset()
+    channels, height, width = env.get_observation_space()
+
+    # Determine the number of actions.
+    num_actions = len(env.get_action_space())
+    # Instantiate the real networks.
     latent_dim = 16
     rep_net = RepresentationNetwork(
-        input_channels=input_channels,
+        input_channels=channels,
         observation_space=(height, width),
         latent_dim=latent_dim,
     )
@@ -162,26 +112,25 @@ def test_mcts_with_max_iterations():
     assert (
         root.visit_count == max_itr
     ), f"Expected {max_itr} iterations, got {root.visit_count}"
-    print("test_mcts_with_max_iterations passed.")
 
 
 def test_mcts_with_max_time():
     """
     Test: Ensure that MCTS stops running after approximately the specified max_time.
     """
-    config = ConnectFourConfig(render_mode="rgb_array", seed=42)
-    env = ConnectFour(config)
-    observation = env.reset()
-    obs_space = env.get_observation_space()
-    observation, input_channels, spatial_dims = preprocess_observation(
-        observation, obs_space
-    )
-    height, width = spatial_dims
-    num_actions = get_num_actions(env)
+    # Create the environment using ConnectFour with a configuration.
+    env = create_environment(CarRacingConfig())
 
+    # Get the initial observation from the environment.
+    observation = env.reset()
+    channels, height, width = env.get_observation_space()
+
+    # Determine the number of actions.
+    num_actions = len(env.get_action_space())
+    # Instantiate the real networks.
     latent_dim = 16
     rep_net = RepresentationNetwork(
-        input_channels=input_channels,
+        input_channels=channels,
         observation_space=(height, width),
         latent_dim=latent_dim,
     )
@@ -215,10 +164,3 @@ def test_mcts_with_max_time():
     assert (
         root.visit_count > 0
     ), "MCTS run did not update the root's visit count in time-based mode."
-    print("test_mcts_with_max_time passed.")
-
-
-if __name__ == "__main__":
-    test_mcts()
-    test_mcts_with_max_iterations()
-    test_mcts_with_max_time()
