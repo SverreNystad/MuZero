@@ -67,6 +67,13 @@ def test_mcts():
         root.visit_count > 0
     ), "Root node's visit count should be updated after MCTS run."
 
+    assert utility is not None, "Utility should not be None after MCTS run."
+    assert tree_policy is not None, "Tree policy should not be None after MCTS run."
+    assert isinstance(utility, float), "Utility should be a float."
+    assert (
+        isinstance(tree_policy, list) and len(tree_policy) == num_actions
+    ), "Tree policy should be a list of length equal to the number of actions."
+
 
 def test_mcts_with_max_iterations():
     """
@@ -106,12 +113,19 @@ def test_mcts_with_max_iterations():
 
     root = Node(latent_state=latent_state, to_play=1, visit_count=0, value_sum=0.0)
 
-    mcts.run(root)
+    tree_policy, utility = mcts.run(root)
 
     # Check that the root's visit_count equals the number of iterations.
     assert (
         root.visit_count == max_itr
     ), f"Expected {max_itr} iterations, got {root.visit_count}"
+
+    assert utility is not None, "Utility should not be None after MCTS run."
+    assert tree_policy is not None, "Tree policy should not be None after MCTS run."
+    assert isinstance(utility, float), "Utility should be a float."
+    assert (
+        isinstance(tree_policy, list) and len(tree_policy) == num_actions
+    ), "Tree policy should be a list of length equal to the number of actions."
 
 
 def test_mcts_with_max_time():
@@ -153,7 +167,7 @@ def test_mcts_with_max_time():
     root = Node(latent_state=latent_state, to_play=1, visit_count=0, value_sum=0.0)
 
     start_time = time.time()
-    mcts.run(root)
+    tree_policy, utility = mcts.run(root)
     elapsed = time.time() - start_time
 
     # Verify that the elapsed time is at least max_time.
@@ -164,3 +178,9 @@ def test_mcts_with_max_time():
     assert (
         root.visit_count > 0
     ), "MCTS run did not update the root's visit count in time-based mode."
+    assert utility is not None, "Utility should not be None after MCTS run."
+    assert tree_policy is not None, "Tree policy should not be None after MCTS run."
+    assert isinstance(utility, float), "Utility should be a float."
+    assert (
+        isinstance(tree_policy, list) and len(tree_policy) == num_actions
+    ), "Tree policy should be a list of length equal to the number of actions."
