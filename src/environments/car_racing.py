@@ -17,8 +17,9 @@ class CarRacing(Environment):
         # By default, gym's CarRacing has continuous actions,
         # but you set continuous=False to get discrete actions.
         self.env = CarRacingGym(render_mode=config.render_mode, continuous=False)
-        obs, _ = self.env.reset(seed=config.seed)
-        self.last_obs = torch.from_numpy(obs).float()
+        obs, _ = self.env.reset(seed=config.seed)  # returns (obs, info)
+        # Convert the shape from (height, width, channels) to (channels, height, width)
+        self.last_obs = torch.from_numpy(obs).float().permute(2, 0, 1)
         self.observation_space = self.env.observation_space
 
     def get_action_space(self) -> tuple:
@@ -30,26 +31,32 @@ class CarRacing(Environment):
         Return the shape of the observation space in the format (height, width, channels)
         The observation space is a 3D tensor of shape (96, 96, 3)
         """
-        return self.observation_space.shape
+        return (
+            self.observation_space.shape[2],
+            self.observation_space.shape[0],
+            self.observation_space.shape[1],
+        )
 
     def step(self, action: int) -> tuple[Tensor, float, bool]:
         obs, reward, terminated, truncated, info = self.env.step(action)
-        obs_t = torch.from_numpy(obs).float()
-        obs_t = obs_t.unsqueeze(0)  # (1, 96, 96, 3)
+        # Convert shape (96, 96, 3) -> (3, 96, 96)
+        obs_t = torch.from_numpy(obs).float().permute(2, 0, 1)
+        obs_t = obs_t.unsqueeze(0)  # (1, 3, 96, 96)
         self.last_obs = obs_t
         done = terminated or truncated
         return obs_t, reward, done
 
     def get_state(self) -> Tensor:
         """
-        Return the last stored observation in shape (1, 96, 96, 3)
+        Return the last stored observation in shape (1, 96, 96, 3) NHWC format
         """
         return self.last_obs
 
     def reset(self) -> Tensor:
         obs, _ = self.env.reset()
-        obs_t = torch.from_numpy(obs).float()
-        obs_t = obs_t.unsqueeze(0)  # (1, 96, 96, 3)
+        # (3, 96, 96)
+        obs_t = torch.from_numpy(obs).float().permute(2, 0, 1)
+        obs_t = obs_t.unsqueeze(0)  # (1, 3, 96, 96)
         self.last_obs = obs_t
         return obs_t
 
