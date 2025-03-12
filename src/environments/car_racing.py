@@ -35,6 +35,7 @@ class CarRacing(Environment):
         obs, reward, terminated, truncated, info = self.env.step(action)
         # Convert shape (96, 96, 3) -> (3, 96, 96)
         obs_t = torch.from_numpy(obs).float().permute(2, 0, 1)
+        obs_t = obs_t.unsqueeze(0)  # (1, 3, 96, 96)
         self.last_obs = obs_t
         done = terminated or truncated
         return obs_t, reward, done
@@ -47,7 +48,9 @@ class CarRacing(Environment):
 
     def reset(self) -> Tensor:
         obs, _ = self.env.reset()
+        # (3, 96, 96)
         obs_t = torch.from_numpy(obs).float().permute(2, 0, 1)
+        obs_t = obs_t.unsqueeze(0)  # (1, 3, 96, 96)
         self.last_obs = obs_t
         return obs_t
 
