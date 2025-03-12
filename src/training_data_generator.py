@@ -105,32 +105,24 @@ class TrainingDataGenerator:
 
             for _ in trange(self.max_steps, desc="Steps per Episode", leave=False):
                 # Convert the environment's state to a latent representation
-                # or keep it as-is if the environment already gives a latent state.
-                state = self.env.get_state()  # shape (3, 96, 96)
-                state = state.unsqueeze(0)  # shape (1, 3, 96, 96)
-                latent_state = self.repr_net(
-                    state
-                )  # Good! This matches the [N, C, H, W] convention.
+                state = self.env.get_state()
+                latent_state = self.repr_net(state)
 
-                # Create an MCTS root node. If your environment is single-player, set `to_play=0`.
+                # Run MCTS to get policy distribution (tree_policy) and value estimate.
                 root = Node(
                     latent_state=latent_state,
                     to_play=0,  # or the correct current player ID
                 )
-
-                # Run MCTS to get policy distribution (tree_policy) and value estimate.
                 tree_policy, value = self.mcts.run(root)
 
-                # Convert tree_policy to a torch.Tensor so we can store it in our Chunk easily.
                 policy_tensor = Tensor(tree_policy)
 
                 # Choose the best action by maximum probability in `tree_policy`.
                 best_action = int(policy_tensor.argmax().item())
 
-                # Step the environment
                 next_state, next_reward, done = self.env.step(best_action)
 
-                # Create a Chunk to store this transition
+                # Store the chunk data in the episode
                 chunk = Chunk(
                     state=state,
                     policy=policy_tensor,
