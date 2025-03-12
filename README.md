@@ -31,6 +31,15 @@ To run the tests, run the following command in the root directory of the project
 pytest
 ```
 
+To run the tests with coverage, run the following command in the root directory of the project:
+```bash
+coverage run -m pytest
+```
+
+To see the coverage report, run the following command in the root directory of the project:
+```bash
+coverage html -i
+```
 
 ## 📖 Documentations
 
