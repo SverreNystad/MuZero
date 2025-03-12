@@ -1,7 +1,8 @@
-from torch import from_numpy, Tensor
+from torch import Tensor, from_numpy
 from gym.envs.box2d.car_racing import CarRacing as CarRacingGym
 from gym.spaces.discrete import Discrete
 from pydantic import BaseModel
+import torch
 
 from src.environment import Environment
 
@@ -17,45 +18,50 @@ class CarRacing(Environment):
         # but you set continuous=False to get discrete actions.
         self.env = CarRacingGym(render_mode=config.render_mode, continuous=False)
         obs, _ = self.env.reset(seed=config.seed)  # returns (obs, info)
-        self.last_obs = obs  # store the initial observation
+        # Convert the shape from (height, width, channels) to (channels, height, width)
+        self.last_obs = torch.from_numpy(obs).float().permute(2, 0, 1)
         self.observation_space = self.env.observation_space
 
     def get_action_space(self) -> tuple:
-        """
-        Return a tuple of discrete actions if the environment is in discrete mode.
-        """
         space: Discrete = self.env.action_space
-        # For example, if space.n == 5, return (0,1,2,3,4)
         return tuple(range(space.n))
 
     def get_observation_space(self) -> tuple:
-        return self.observation_space.shape
+        """
+        Return the shape of the observation space in the format (height, width, channels)
+        The observation space is a 3D tensor of shape (96, 96, 3)
+        """
+        return (
+            self.observation_space.shape[2],
+            self.observation_space.shape[0],
+            self.observation_space.shape[1],
+        )
 
     def step(self, action: int) -> tuple[Tensor, float, bool]:
-        """
-        Steps the environment using the selected action index.
-        Returns (observation, reward, termination).
-        """
         obs, reward, terminated, truncated, info = self.env.step(action)
-        self.last_obs = obs  # update the stored observation
-        return from_numpy(obs), reward, terminated or truncated
+        # Convert shape (96, 96, 3) -> (3, 96, 96)
+        obs_t = torch.from_numpy(obs).float().permute(2, 0, 1)
+        obs_t = obs_t.unsqueeze(0)  # (1, 3, 96, 96)
+        self.last_obs = obs_t
+        done = terminated or truncated
+        return obs_t, reward, done
 
     def get_state(self) -> Tensor:
         """
-        Return the last stored observation as a Torch tensor.
+        Return the last stored observation in shape (1, 96, 96, 3) NHWC format
         """
-        return from_numpy(self.last_obs)
+        return self.last_obs
 
     def reset(self) -> Tensor:
-        """
-        Reset the CarRacing environment and store the new initial observation.
-        """
         obs, _ = self.env.reset()
-        self.last_obs = obs
-        return from_numpy(obs)
+        # (3, 96, 96)
+        obs_t = torch.from_numpy(obs).float().permute(2, 0, 1)
+        obs_t = obs_t.unsqueeze(0)  # (1, 3, 96, 96)
+        self.last_obs = obs_t
+        return obs_t
 
     def render(self) -> any:
         return self.env.render()
 
-    def close(self) -> any:
+    def close(self) -> None:
         return self.env.close()
