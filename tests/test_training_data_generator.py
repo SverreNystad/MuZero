@@ -38,14 +38,13 @@ def minimal_networks(car_racing_env):
     Adjust the input_channels, observation_space, latent_dim, and num_actions
     as needed.
     """
-    input_channels = 3  # Typical channels for CarRacing, adjust if needed
-    observation_space = car_racing_env.get_observation_space()
+    channels, height, width = car_racing_env.get_observation_space()
     latent_dim = 8
     num_actions = len(car_racing_env.get_action_space())
 
     rep_net = RepresentationNetwork(
-        input_channels=input_channels,
-        observation_space=observation_space,
+        input_channels=channels,
+        observation_space=(height, width),
         latent_dim=latent_dim,
     )
     dyn_net = DynamicsNetwork(
@@ -73,7 +72,7 @@ def test_generate_training_data_gives_episode_data(car_racing_env, minimal_netwo
         "max_steps": 5,  # up to 5 steps per episode
         "look_back": 1,
         "total_time": 30000,  # may not be used in this snippet
-        "max_time_mcts": 5,  # time in seconds for MCTS (small for test)
+        "max_time_mcts": 1,  # time in seconds for MCTS (small for test)
     }
 
     generator = TrainingDataGenerator(
