@@ -69,8 +69,6 @@ stack-data==0.6.3
 swig==4.3.0
 sympy==1.13.1
 torch==2.6.0
-torchaudio==2.6.0+cu118
-torchvision==0.21.0+cu118
 tornado==6.4.2
 tqdm==4.67.1
 traitlets==5.14.3
