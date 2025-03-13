@@ -11,6 +11,7 @@ from src.neural_network import RepresentationNetwork
     "env_config",
     [
         CarRacingConfig(seed=42, render_mode="rgb_array"),  # (3, 96, 96)
+        ConnectFourConfig(),  # (2, 6, 7)
     ],
 )
 def test_environments_states_with_representation_network(env_config: CarRacingConfig):
@@ -23,3 +24,11 @@ def test_environments_states_with_representation_network(env_config: CarRacingCo
     obs = env.reset()
     latent = repr_net(obs)
     assert latent.shape == (1, latent_dim)
+
+    # Test the representation network with a random action
+    action_space = env.get_action_space()
+    action = action_space[0]
+    obs, _, _ = env.step(action)
+    next_latent = repr_net(obs)
+    assert next_latent.shape == (1, latent_dim)
+    assert not (latent == next_latent).all()
