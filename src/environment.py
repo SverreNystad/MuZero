@@ -44,7 +44,6 @@ class Environment(Protocol):
         """
         ...
 
-   
     def get_observation_space(self) -> tuple:
         """
         The observation space of the environment.

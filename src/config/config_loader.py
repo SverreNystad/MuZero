@@ -3,6 +3,7 @@ import os
 
 CONFIG_PATH = os.path.dirname(__file__)
 
+
 def load_config(filename: str) -> dict:
     """
     Returns:

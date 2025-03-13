@@ -6,11 +6,15 @@ from src.environment import Environment
 from src.neural_network import DynamicsNetwork, PredictionNetwork, RepresentationNetwork
 from src.training_data_generator import Episode
 
+
 class NeuralNetworkManager:
-    def __init__(self, config: dict,
-                 repr_net: RepresentationNetwork,
-                 dyn_net: DynamicsNetwork,
-                 pred_net: PredictionNetwork):
+    def __init__(
+        self,
+        config: dict,
+        repr_net: RepresentationNetwork,
+        dyn_net: DynamicsNetwork,
+        pred_net: PredictionNetwork,
+    ):
         """
         Args:
             config (dict): Contains hyperparameters like 'lookback', 'roll_ahead', 'learning_rate'
@@ -23,10 +27,10 @@ class NeuralNetworkManager:
         self.pred_net = pred_net
 
         self.optimizer = torch.optim.Adam(
-            list(self.repr_net.parameters()) +
-            list(self.dyn_net.parameters()) +
-            list(self.pred_net.parameters()),
-            lr=config["learning_rate"]
+            list(self.repr_net.parameters())
+            + list(self.dyn_net.parameters())
+            + list(self.pred_net.parameters()),
+            lr=config["learning_rate"],
         )
 
     def train(self, episode_history: list[Episode], mbs: int):
@@ -52,10 +56,12 @@ class NeuralNetworkManager:
 
             # Gather data
             Sb_k = [episode.chunks[i].state for i in range(start_idx, k + 1)]
-            Ab_k = [episode.chunks[i].best_action for i in range(k, k + self.roll_ahead)]
+            Ab_k = [
+                episode.chunks[i].best_action for i in range(k, k + self.roll_ahead)
+            ]
             Πb_k = [episode.chunks[i].policy for i in range(k, k + self.roll_ahead + 1)]
-            Vb_k = [episode.chunks[i].value  for i in range(k, k + self.roll_ahead + 1)]
-            Rb_k = [episode.chunks[i+1].reward for i in range(k, k + self.roll_ahead)]
+            Vb_k = [episode.chunks[i].value for i in range(k, k + self.roll_ahead + 1)]
+            Rb_k = [episode.chunks[i + 1].reward for i in range(k, k + self.roll_ahead)]
 
             # Optimize
             self.optimizer.zero_grad()
@@ -63,9 +69,9 @@ class NeuralNetworkManager:
             total_loss.backward()
             self.optimizer.step()
 
-    def bptt(self, Sb_k: list[Environment],
-             Ab_k: list[Tensor],
-             PVR: tuple) -> torch.Tensor:
+    def bptt(
+        self, Sb_k: list[Environment], Ab_k: list[Tensor], PVR: tuple
+    ) -> torch.Tensor:
         """
         Perform Backpropagation Through Time (BPTT) on MuZero's three networks.
 
@@ -93,7 +99,7 @@ class NeuralNetworkManager:
 
             # Convert the single-step targets to tensors if needed
             target_policy = Πb_k[i]
-            target_value  = Vb_k[i]
+            target_value = Vb_k[i]
             target_reward = Rb_k[i]
 
             if not isinstance(target_policy, torch.Tensor):
@@ -113,12 +119,7 @@ class NeuralNetworkManager:
             single_step_PVR = ([target_policy], [target_value], [target_reward])
 
             # Compute single-step loss
-            step_loss = self.loss(
-                single_step_PVR,
-                pred_reward,
-                pred_value,
-                pred_policy
-            )
+            step_loss = self.loss(single_step_PVR, pred_reward, pred_value, pred_policy)
             total_loss += step_loss
 
             # Move to the next latent state
@@ -133,10 +134,7 @@ class NeuralNetworkManager:
         # No policy or reward for the final step, only a value
         final_PVR = ([], [final_target_value], [])
         final_step_loss = self.loss(
-            final_PVR,
-            reward=None,
-            value=final_pred_value,
-            policy=None
+            final_PVR, reward=None, value=final_pred_value, policy=None
         )
         total_loss += final_step_loss
 
@@ -159,7 +157,7 @@ class NeuralNetworkManager:
 
         # Start all sub-losses at 0
         policy_loss_val = torch.zeros(1, dtype=torch.float32)
-        value_loss_val  = torch.zeros(1, dtype=torch.float32)
+        value_loss_val = torch.zeros(1, dtype=torch.float32)
         reward_loss_val = torch.zeros(1, dtype=torch.float32)
 
         # 1) Policy loss
@@ -190,7 +188,7 @@ class NeuralNetworkManager:
         return F.mse_loss(pred_value, target_value)
 
     def policy_loss(self, target_policy: Tensor, pred_policy: Tensor) -> Tensor:
-        """Compute cross-entropy or KL divergence for policy. 
-           We treat MuZero's approach: l_p(π, p) = - sum( π * log p ).
+        """Compute cross-entropy or KL divergence for policy.
+        We treat MuZero's approach: l_p(π, p) = - sum( π * log p ).
         """
         return -torch.sum(target_policy * torch.log(pred_policy))
