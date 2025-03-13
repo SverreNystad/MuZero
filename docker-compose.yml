@@ -1,3 +1,8 @@
 services:
-  model:
-    build: .
+  devcontainer:
+    build:
+      context: .
+      dockerfile: dev.Dockerfile
+    volumes:
+       - ./:/code:cached
+    command: sleep infinity

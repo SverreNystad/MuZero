@@ -6,8 +6,16 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /code
 
+# Install dependencies
+CMD apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    git \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt /code/requirements.txt
 
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
-COPY . /code/
+
+COPY . /root/workspaces/
