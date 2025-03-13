@@ -1,12 +1,10 @@
 import time
+import pytest
 import torch
-from torch import from_numpy, Tensor
-from pydantic import BaseModel
 
-from src.environments.connect_four import ConnectFour, ConnectFourConfig
+from src.environments.connect_four import ConnectFourConfig
 from src.environments.car_racing import CarRacingConfig
 from src.environments.factory import create_environment
-from src.environment import Environment
 from src.neural_network import (
     RepresentationNetwork,
     DynamicsNetwork,
@@ -16,13 +14,20 @@ from src.search.factory import create_mcts
 from src.search.nodes import Node
 
 
-def test_mcts():
+@pytest.mark.parametrize(
+    "env_config",
+    [
+        CarRacingConfig(seed=42, render_mode="rgb_array"),  # (3, 96, 96)
+        ConnectFourConfig(),  # (2, 6, 7)
+    ],
+)
+def test_mcts(env_config):
     """
     General test: Use the Connect Four environment and real networks to run MCTS
     and verify that the root node is updated.
     """
     # Create the environment using ConnectFour with a configuration.
-    env = create_environment(CarRacingConfig())
+    env = create_environment(env_config)
 
     # Get the initial observation from the environment.
     observation = env.reset()
@@ -75,12 +80,19 @@ def test_mcts():
     ), "Tree policy should be a list of length equal to the number of actions."
 
 
-def test_mcts_with_max_iterations():
+@pytest.mark.parametrize(
+    "env_config",
+    [
+        CarRacingConfig(seed=42, render_mode="rgb_array"),  # (3, 96, 96)
+        ConnectFourConfig(),  # (2, 6, 7)
+    ],
+)
+def test_mcts_with_max_iterations(env_config):
     """
     Test: Ensure that MCTS terminates after the specified number of iterations.
     """
     # Create the environment using ConnectFour with a configuration.
-    env = create_environment(CarRacingConfig())
+    env = create_environment(env_config)
 
     # Get the initial observation from the environment.
     observation = env.reset()
@@ -128,12 +140,19 @@ def test_mcts_with_max_iterations():
     ), "Tree policy should be a list of length equal to the number of actions."
 
 
-def test_mcts_with_max_time():
+@pytest.mark.parametrize(
+    "env_config",
+    [
+        CarRacingConfig(seed=42, render_mode="rgb_array"),  # (3, 96, 96)
+        ConnectFourConfig(),  # (2, 6, 7)
+    ],
+)
+def test_mcts_with_max_time(env_config):
     """
     Test: Ensure that MCTS stops running after approximately the specified max_time.
     """
     # Create the environment using ConnectFour with a configuration.
-    env = create_environment(CarRacingConfig())
+    env = create_environment(env_config)
 
     # Get the initial observation from the environment.
     observation = env.reset()
