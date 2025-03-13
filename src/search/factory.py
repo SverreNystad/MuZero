@@ -4,6 +4,7 @@ from src.search.selection import UCT, PUCT
 from src.search.backpropagation import Backpropagation
 from src.neural_network import DynamicsNetwork, PredictionNetwork
 from src.search.simulation import MuZeroSimulation
+from src.search.strategies import SelectionStrategy
 
 
 def create_mcts(
@@ -30,6 +31,7 @@ def create_mcts(
         MCTS: A configured MCTS instance.
     """
     # Choose selection strategy based on input parameter.
+    selection_strategy: SelectionStrategy
     if selection_type.lower() == "uct":
         selection_strategy = UCT()
     elif selection_type.lower() == "puct":

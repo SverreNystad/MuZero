@@ -31,7 +31,7 @@ class RepresentationNetwork(nn.Module):
 
         self.fc = nn.Linear(conv_output_size, latent_dim)
 
-    def forward(self, observation: torch.Tensor):
+    def forward(self, observation: torch.Tensor) -> torch.Tensor:
         """
         Args:
             observation (Tensor): Input observation of shape (batch, channels, height, width).

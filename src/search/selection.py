@@ -1,6 +1,7 @@
 import math
 from src.search.nodes import Node
 from src.search.strategies import SelectionStrategy
+from typing import cast
 
 
 class UCT(SelectionStrategy):
@@ -13,10 +14,9 @@ class UCT(SelectionStrategy):
 
     def uct_score(self, node: Node) -> float:
         prior_score = node.reward / node.visit_count
+        parent = cast(Node, node.parent)
         value_score = (
-            self.c
-            * math.sqrt(math.log(node.parent.visit_count))
-            / (node.visit_count + 1)
+            self.c * math.sqrt(math.log(parent.visit_count)) / (node.visit_count + 1)
         )
         return prior_score + value_score
 
@@ -42,10 +42,12 @@ class PUCT(SelectionStrategy):
         self.discount = discount
 
     def puct_score(self, node: Node) -> float:
-        pb_c = math.sqrt(node.parent.visit_count) / (node.visit_count + 1)
+        parent = cast(Node, node.parent)
+
+        pb_c = math.sqrt(parent.visit_count) / (node.visit_count + 1)
         pb_c *= math.log((node.visit_count + self.c2 + 1) / self.c2) + self.c1
 
-        prior_score = pb_c * node.parent.value_sum
+        prior_score = pb_c * parent.value_sum
         if node.visit_count > 0:
             value_score = (
                 node.reward + self.discount * node.value_sum / node.visit_count

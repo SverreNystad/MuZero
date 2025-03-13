@@ -1,3 +1,4 @@
+from typing import Any
 from torch import from_numpy, Tensor
 from pydantic import BaseModel
 from pettingzoo.classic import connect_four_v3
@@ -16,18 +17,18 @@ class ConnectFour(Environment):
         self.env.reset(seed=config.seed)
         self.observation_space = self.env.observation_space("player_0")
 
-    def get_action_space(self) -> tuple:
+    def get_action_space(self) -> tuple[int, ...]:
         space: Box = self.observation_space["action_mask"]
         # Box(0, 1, (7,), int8)
         return tuple(range(space.shape[0]))
 
-    def get_observation_space(self) -> tuple:
-        return [
+    def get_observation_space(self) -> tuple[int, ...]:
+        return (
             self.observation_space["observation"].shape[2],
             *self.observation_space["observation"].shape[:2],
-        ]
+        )
 
-    def step(self, action: int) -> tuple:
+    def step(self, action: int) -> tuple[Tensor, float, bool]:
         self.env.step(action)
         observation, reward, termination, truncation, info = self.env.last()
         observation_t = from_numpy(observation["observation"])
@@ -47,5 +48,8 @@ class ConnectFour(Environment):
         obs_t = obs_t.unsqueeze(0)
         return obs_t
 
-    def render(self) -> any:
+    def render(self) -> Any:
         return self.env.render()
+
+    def close(self) -> None:
+        self.env.close()

@@ -1,6 +1,7 @@
 import os
 import pickle
 import time
+from typing import cast
 from tqdm import trange
 from torch import Tensor
 from dataclasses import dataclass
@@ -164,9 +165,11 @@ def load_training_data(path: str) -> list[Episode]:
     """
     Load and return the list of Episode objects from the given path.
     """
-
     with open(path, "rb") as f:
-        return pickle.load(f)
+        episodes = pickle.load(f)
+    _validate_data(episodes)
+
+    return cast(list[Episode], episodes)
 
 
 def load_all_training_data() -> list[Episode]:
@@ -189,4 +192,16 @@ def load_all_training_data() -> list[Episode]:
                 print(f"Error loading {file_path}: file is corrupted or incomplete.")
                 continue
 
-    return all_episodes
+    _validate_data(all_episodes)
+    return cast(list[Episode], all_episodes)
+
+
+def _validate_data(data: list[Episode]) -> None:
+    """
+    Validate the data by checking the type of each object in the list.
+    """
+    if not isinstance(data, list):
+        raise ValueError(f"Expected a list of Episode objects, but got {type(data)}")
+    for episode in data:
+        if not isinstance(episode, Episode):
+            raise ValueError(f"Expected an Episode object, but got {type(episode)}")

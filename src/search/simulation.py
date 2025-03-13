@@ -1,3 +1,4 @@
+from typing import cast
 import torch
 from src.neural_network import PredictionNetwork
 from src.search.nodes import Node
@@ -22,4 +23,4 @@ class MuZeroSimulation(SimulationStrategy):
         value: torch.Tensor
         _, value = self.predictor(latent_state_batched)
 
-        return value.item()
+        return cast(float, value.item())

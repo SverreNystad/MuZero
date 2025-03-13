@@ -1,5 +1,5 @@
 from torch import Tensor
-from typing import Protocol, Tuple, Any
+from typing import Protocol, Any
 from torch import Tensor
 
 """
@@ -38,13 +38,13 @@ class Environment(Protocol):
     - close(): Cleans up resources used by the environment.
     """
 
-    def get_action_space(self) -> tuple:
+    def get_action_space(self) -> tuple[int, ...]:
         """
         The action space of the environment.
         """
         ...
 
-    def get_observation_space(self) -> tuple:
+    def get_observation_space(self) -> tuple[int, ...]:
         """
         The observation space of the environment.
         """
@@ -77,16 +77,16 @@ class Environment(Protocol):
         """
         ...
 
-    def reset(self) -> Any:
+    def reset(self) -> Tensor:
         """
         Reset the environment to its initial state.
 
         Returns:
-            observation (Any): The initial observation for the agent.
+            observation (Tensor): The initial observation for the agent.
         """
         ...
 
-    def render(self, mode: str = "human") -> Any:
+    def render(self) -> Any:
         """
         Render the environment in a human or machine-readable format.
 

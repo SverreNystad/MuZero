@@ -1,4 +1,5 @@
-from torch import Tensor, from_numpy
+from typing import Any
+from torch import Tensor
 from gym.envs.box2d.car_racing import CarRacing as CarRacingGym
 from gym.spaces.discrete import Discrete
 from pydantic import BaseModel
@@ -22,11 +23,11 @@ class CarRacing(Environment):
         self.last_obs = torch.from_numpy(obs).float().permute(2, 0, 1)
         self.observation_space = self.env.observation_space
 
-    def get_action_space(self) -> tuple:
+    def get_action_space(self) -> tuple[int, ...]:
         space: Discrete = self.env.action_space
         return tuple(range(space.n))
 
-    def get_observation_space(self) -> tuple:
+    def get_observation_space(self) -> tuple[int, ...]:
         """
         Return the shape of the observation space in the format (height, width, channels)
         The observation space is a 3D tensor of shape (96, 96, 3)
@@ -60,8 +61,8 @@ class CarRacing(Environment):
         self.last_obs = obs_t
         return obs_t
 
-    def render(self) -> any:
+    def render(self) -> Any:
         return self.env.render()
 
     def close(self) -> None:
-        return self.env.close()
+        self.env.close()
