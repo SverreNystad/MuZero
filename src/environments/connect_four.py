@@ -1,13 +1,9 @@
-
 from torch import from_numpy, Tensor
 from pydantic import BaseModel
 from pettingzoo.classic import connect_four_v3
 from src.environment import Environment
 from gymnasium.spaces import Box
 
-
-env = connect_four_v3.env(render_mode="rgb_array")
-env.reset(seed=42)
 
 class ConnectFourConfig(BaseModel):
     render_mode: str = "rgb_array"
@@ -21,26 +17,35 @@ class ConnectFour(Environment):
         self.observation_space = self.env.observation_space("player_0")
 
     def get_action_space(self) -> tuple:
-        return self.observation_space["action_mask"].shape
-    
+        space: Box = self.observation_space["action_mask"]
+        # Box(0, 1, (7,), int8)
+        return tuple(range(space.shape[0]))
+
     def get_observation_space(self) -> tuple:
-        return self.observation_space["observation"].shape
-    
+        return [
+            self.observation_space["observation"].shape[2],
+            *self.observation_space["observation"].shape[:2],
+        ]
+
     def step(self, action: int) -> tuple:
         self.env.step(action)
         observation, reward, termination, truncation, info = self.env.last()
-        observation = from_numpy(observation["observation"])
-        return observation, reward, termination
+        observation_t = from_numpy(observation["observation"])
+        observation_t = observation_t.float().permute(2, 0, 1)
+        observation_t = observation_t.unsqueeze(0)
+
+        return observation_t, reward, termination
 
     def get_state(self) -> Tensor:
         observation = self.env.last()[0]
-        return from_numpy(observation["observation"])
-    
+        return from_numpy(observation["observation"]).float().permute(2, 0, 1)
+
     def reset(self) -> Tensor:
         self.env.reset()
         observation = self.env.last()[0]
-        return from_numpy(observation["observation"])
-    
+        obs_t = from_numpy(observation["observation"]).float().permute(2, 0, 1)
+        obs_t = obs_t.unsqueeze(0)
+        return obs_t
+
     def render(self) -> any:
         return self.env.render()
-    
