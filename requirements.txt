@@ -1,6 +1,6 @@
 annotated-types==0.7.0
 asttokens==3.0.0
-box2d-py==2.3.5
+Box2D==2.3.10
 cloudpickle==3.1.1
 comm==0.2.2
 coverage==7.6.12
