@@ -10,7 +10,7 @@ from src.neural_network import (
     DynamicsNetwork,
     PredictionNetwork,
 )
-from src.search.factory import create_mcts
+from src.search.factory import MCTSConfig, create_mcts
 from src.search.nodes import Node
 
 
@@ -52,13 +52,16 @@ def test_mcts(env_config):
     actions = torch.arange(num_actions)
 
     # Create the MCTS instance using the factory method (using 5 iterations here).
+    config = MCTSConfig(
+        selection_strategy="uct",
+        max_iterations=5,
+        max_time=0.0,  # Iteration-based termination
+    )
     mcts = create_mcts(
         dynamics_network=dyn_net,
         prediction_network=pred_net,
         actions=actions,
-        selection_type="uct",
-        max_itr=5,
-        max_time=0.0,  # Iteration-based termination
+        config=config,
     )
 
     # Create the root node using the computed latent state.
@@ -114,13 +117,16 @@ def test_mcts_with_max_iterations(env_config):
     actions = torch.arange(num_actions)
 
     max_itr = 10
+    config = MCTSConfig(
+        selection_strategy="uct",
+        max_iterations=max_itr,
+        max_time=0.0,  # Iteration-based termination.
+    )
     mcts = create_mcts(
         dynamics_network=dyn_net,
         prediction_network=pred_net,
         actions=actions,
-        selection_type="uct",
-        max_itr=max_itr,
-        max_time=0.0,  # Iteration-based termination.
+        config=config,
     )
 
     root = Node(latent_state=latent_state, to_play=1, visit_count=0, value_sum=0.0)
@@ -173,14 +179,17 @@ def test_mcts_with_max_time(env_config):
     latent_state = rep_net(observation)
     actions = torch.arange(num_actions)
 
-    max_time = 0.5  # seconds
+    max_time = 1  # seconds
+    config = MCTSConfig(
+        selection_strategy="uct",
+        max_iterations=0,  # Time-based termination mode.
+        max_time=max_time,
+    )
     mcts = create_mcts(
         dynamics_network=dyn_net,
         prediction_network=pred_net,
         actions=actions,
-        selection_type="uct",
-        max_itr=0,  # Time-based termination mode.
-        max_time=max_time,
+        config=config,
     )
 
     root = Node(latent_state=latent_state, to_play=1, visit_count=0, value_sum=0.0)

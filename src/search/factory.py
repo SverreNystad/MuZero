@@ -1,4 +1,8 @@
+from enum import StrEnum
+
+from pydantic import BaseModel
 import torch
+
 from src.search.mcts import MCTS
 from src.search.selection import UCT, PUCT
 from src.search.backpropagation import Backpropagation
@@ -7,13 +11,22 @@ from src.search.simulation import MuZeroSimulation
 from src.search.strategies import SelectionStrategy
 
 
+class SelectionStrategyType(StrEnum):
+    uct = "uct"
+    puct = "puct"
+
+
+class MCTSConfig(BaseModel):
+    selection_strategy: SelectionStrategyType = SelectionStrategyType.puct
+    max_iterations: int
+    max_time: int
+
+
 def create_mcts(
     dynamics_network: DynamicsNetwork,
     prediction_network: PredictionNetwork,
     actions: torch.Tensor,
-    selection_type: str = "uct",  # or "puct"
-    max_itr: int = 0,
-    max_time: float = 10.0,
+    config: MCTSConfig,
 ) -> MCTS:
     """
     Factory method for creating an MCTS instance.
@@ -22,23 +35,20 @@ def create_mcts(
         dynamics_network (DynamicsNetwork): The dynamics network used for state transitions.
         prediction_network (PredictionNetwork): The prediction network used in the simulation.
         actions (torch.Tensor): A tensor containing the set of actions.
-        selection_type (str, optional): The type of selection strategy to use ('uct' or 'puct').
-                                        Defaults to 'uct'.
-        max_itr (int, optional): The maximum number of iterations for MCTS. Set to 0 to use time-based termination.
-        max_time (float, optional): The maximum time (in seconds) to run MCTS if max_itr is 0.
+        config (MCTSConfig): A configuration object for the MCTS instance.
 
     Returns:
         MCTS: A configured MCTS instance.
     """
     # Choose selection strategy based on input parameter.
     selection_strategy: SelectionStrategy
-    if selection_type.lower() == "uct":
+    if config.selection_strategy == SelectionStrategyType.uct:
         selection_strategy = UCT()
-    elif selection_type.lower() == "puct":
+    elif config.selection_strategy == SelectionStrategyType.puct:
         selection_strategy = PUCT()
     else:
         raise ValueError(
-            f"Invalid selection_type: {selection_type}. Choose 'uct' or 'puct'."
+            f"Invalid selection_type: {config.selection_strategy}. Choose 'uct' or 'puct'."
         )
 
     # Create simulation and backpropagation strategies.
@@ -52,7 +62,7 @@ def create_mcts(
         backpropagation=backpropagation_strategy,
         dynamic_network=dynamics_network,
         actions=actions,
-        max_itr=max_itr,
-        max_time=max_time,
+        max_itr=config.max_iterations,
+        max_time=config.max_time,
     )
     return mcts_instance

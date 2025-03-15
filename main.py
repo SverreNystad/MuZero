@@ -16,11 +16,11 @@ def generate_training_data() -> None:
     config = load_config("config.yaml")
 
     # Create the environment using the factory method.
-    env = create_environment(config["environment"])
+    env = create_environment(config.environment)
 
     channels, height, width = env.get_observation_space()
     num_actions = len(env.get_action_space())
-    latent_dim = config["networks"]["latent_dim"]
+    latent_dim = config.networks.representation.latent_dim
     # Load the representation network.
     repr_net = RepresentationNetwork(
         input_channels=channels,
@@ -46,7 +46,7 @@ def generate_training_data() -> None:
         repr_net=repr_net,
         dyn_net=dyn_net,
         pred_net=pred_net,
-        config=config["training_data_generator"],
+        config=config.training_data_generator,
     )
 
     # Generate the training data.

@@ -1,54 +1,63 @@
-connect_four_config:
-  render_mode: 'rgb_array'
+# Environment Configuration
+environment:
+  type: "CarRacing"
   seed: 42
-
-car_racing_config:
-  render_mode: 'rgb_array'
-  seed: 42
+  render_mode: "rgb_array"
 
 # Monte Carlo Tree Search (MCTS) configuration
-mcts:
-  selection_strategy: "puct"          # can be "uct" or "puct"
-  max_itr: 1000                       # maximum iterations (set to 0 if using time-based termination)
-  max_time: 10.0                      # maximum search time per move (in seconds)
+training_data_generator:
+  num_episodes: 2                   # total number of episodes for self-play/learning
+  max_steps_per_episode: 2
+  look_back: 4                        # number of past states to include in the input sequence
+  roll_ahead: 1
+  total_time: 3600
+  mcts:
+      selection_strategy: "puct"          # can be "uct" or "puct"
+      max_iterations: 1000                       # maximum iterations (set to 0 if using time-based termination)
+      max_time: 10.0                      # maximum search time per move (in seconds)
 
-# Environment configuration
-environment:
-  config_name: "car_racing_config" 
 
 # Training hyperparameters
 training:
-  num_episodes: 10000                 # total number of episodes for self-play/learning
-  look_back: 4                        # number of past states to include in the input sequence
-  roll_ahead: 1
-  total_time: 3600 
   learning_rate: 0.001
-  betas: (0.9, 0.999)
+  epochs: 100
+  batch_size: 32
+  betas: [0.9, 0.999]
 
 # Neural network configurations
-neural_networks:
+networks:
   representation:
-    latent_dim: 128                     # dimension of latent space
+    latent_dim: 128
     layers:
-      # TODO
-      - filters: 32
+      - type: "conv"
+        out_channels: 32
         kernel_size: 3
         stride: 1
         padding: 1
-      - filters: 64
+        activation: "relu"
+      - type: "conv"
+        out_channels: 64
         kernel_size: 3
         stride: 1
         padding: 1
-
+        activation: "relu"
+      - type: "linear"
+        out_channels: 128
+        activation: "tanh"
   dynamics:
     layers:
-      # TODO
-
+      - type: "linear"
+        out_channels: 128
+        activation: "relu"
+      - type: "linear"
+        out_channels: 128
+        activation: "tanh"
   prediction:
-    common_layers:
-
-    # Policy head: predicts a probability distribution over actions
-    policy_tower_layers:
-    # Value head: predicts a scalar value for the state
-    value_tower_layers:
+    layers:
+      - type: "linear"
+        out_channels: 64
+        activation: "relu"
+      - type: "linear"
+        out_channels: 1
+        activation: "none"
 
