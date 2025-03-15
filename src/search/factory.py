@@ -42,14 +42,11 @@ def create_mcts(
     """
     # Choose selection strategy based on input parameter.
     selection_strategy: SelectionStrategy
-    if config.selection_strategy == SelectionStrategyType.uct:
-        selection_strategy = UCT()
-    elif config.selection_strategy == SelectionStrategyType.puct:
-        selection_strategy = PUCT()
-    else:
-        raise ValueError(
-            f"Invalid selection_type: {config.selection_strategy}. Choose 'uct' or 'puct'."
-        )
+    match config.selection_strategy:
+        case SelectionStrategyType.uct:
+            selection_strategy = UCT()
+        case SelectionStrategyType.puct:
+            selection_strategy = PUCT()
 
     # Create simulation and backpropagation strategies.
     simulation_strategy = MuZeroSimulation(prediction_network)
