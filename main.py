@@ -57,5 +57,27 @@ def generate_training_data() -> None:
     print(f"Training data saved to {path}")
 
 
+def _profile_code(func: callable, *args, **kwargs) -> None:
+    """
+    Profile the code using cProfile.
+    """
+    import cProfile
+    import pstats
+
+    profile = cProfile.Profile()
+    profile.enable()
+
+    func(*args, **kwargs)
+
+    profile.disable()
+
+    stats = pstats.Stats(profile)
+    stats.strip_dirs()
+    stats.sort_stats("cumulative")
+    stats.print_stats()
+    # Write the profile to a file.
+    stats.dump_stats("profile.prof")
+
+
 if __name__ == "__main__":
-    generate_training_data()
+    _profile_code(generate_training_data)
