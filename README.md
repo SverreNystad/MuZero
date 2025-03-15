@@ -20,7 +20,7 @@
 ## Usage
 To start, run the following command in the root directory of the project:
 ```bash
-
+python main.py
 ```
 
 

@@ -11,7 +11,9 @@ import torch.nn.functional as F
 
 
 class RepresentationNetwork(nn.Module):
-    def __init__(self, input_channels: int, observation_space: tuple, latent_dim: int):
+    def __init__(
+        self, input_channels: int, observation_space: tuple[int, ...], latent_dim: int
+    ):
         """
         Maps the raw observation (e.g. an image) to an abstract latent state.
         Args:
