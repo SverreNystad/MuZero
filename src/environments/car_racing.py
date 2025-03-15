@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 from torch import Tensor
 from gym.envs.box2d.car_racing import CarRacing as CarRacingGym
 from gym.spaces.discrete import Discrete
@@ -9,6 +9,7 @@ from src.environment import Environment
 
 
 class CarRacingConfig(BaseModel):
+    type: Literal["CarRacing"] = "CarRacing"
     seed: int = 42
     render_mode: str = "rgb_array"
 
