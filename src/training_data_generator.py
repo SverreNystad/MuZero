@@ -6,6 +6,7 @@ from tqdm import trange
 from torch import Tensor
 from dataclasses import dataclass
 
+from src.config.config_loader import TrainingDataGeneratorConfig
 from src.environment import Environment
 from src.neural_network import RepresentationNetwork, PredictionNetwork, DynamicsNetwork
 from src.search.factory import create_mcts
@@ -46,7 +47,7 @@ class TrainingDataGenerator:
         repr_net: RepresentationNetwork,
         dyn_net: DynamicsNetwork,
         pred_net: PredictionNetwork,
-        config: dict,
+        config: TrainingDataGeneratorConfig,
     ):
         """
         Args:
@@ -65,16 +66,15 @@ class TrainingDataGenerator:
         self.dyn_net = dyn_net
         self.pred_net = pred_net
 
-        self.num_episodes: int = config["num_episodes"]  # N_e
-        self.max_steps: int = config["max_steps"]  # N_es
-        self.look_back: int = config["look_back"]  # q
-        self.total_time: float = config["total_time"]  # Not used below, but available
+        self.num_episodes: int = config.num_episodes  # N_e
+        self.max_steps: int = config.max_steps_per_episode  # N_es
+        self.look_back: int = config.look_back  # q
+        self.total_time: float = config.total_time  # Not used below, but available
         self.mcts: MCTS = create_mcts(
             dynamics_network=dyn_net,
             prediction_network=pred_net,
             actions=self._make_actions_tensor(env),
-            selection_type="puct",
-            max_time=config["max_time_mcts"],  # 0 => iteration-based if you prefer
+            config=config.mcts,
         )
 
     def _make_actions_tensor(self, env: Environment) -> Tensor:

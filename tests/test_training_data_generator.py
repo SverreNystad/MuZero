@@ -2,6 +2,7 @@ import os
 import pytest
 import torch
 
+from src.config.config_loader import TrainingDataGeneratorConfig
 from src.environments.car_racing import CarRacingConfig
 from src.environments.factory import create_environment
 
@@ -11,6 +12,7 @@ from src.neural_network import (
     PredictionNetwork,
 )
 
+from src.search.factory import MCTSConfig
 from src.training_data_generator import (
     Episode,
     Chunk,
@@ -67,13 +69,18 @@ def test_generate_training_data_gives_episode_data(car_racing_env, minimal_netwo
     rep_net, dyn_net, pred_net = minimal_networks
 
     # Example config for generating a small amount of data.
-    config = {
-        "num_episodes": 1,
-        "max_steps": 5,  # up to 5 steps per episode
-        "look_back": 1,
-        "total_time": 30000,  # may not be used in this snippet
-        "max_time_mcts": 1,  # time in seconds for MCTS (small for test)
-    }
+    mcts_config = MCTSConfig(
+        max_iterations=1,
+        max_time=1,
+    )
+    config = TrainingDataGeneratorConfig(
+        num_episodes=1,
+        max_steps_per_episode=10,
+        look_back=3,
+        roll_ahead=3,
+        total_time=10,
+        mcts=mcts_config,
+    )
 
     generator = TrainingDataGenerator(
         env=car_racing_env,

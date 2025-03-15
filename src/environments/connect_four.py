@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 from torch import from_numpy, Tensor
 from pydantic import BaseModel
 from pettingzoo.classic import connect_four_v3
@@ -7,6 +7,7 @@ from gymnasium.spaces import Box
 
 
 class ConnectFourConfig(BaseModel):
+    type: Literal["ConnectFour"] = "ConnectFour"
     render_mode: str = "rgb_array"
     seed: int = 42
 
