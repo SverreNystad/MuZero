@@ -22,7 +22,7 @@ class NeuralNetworkManager:
             repr_net, dyn_net, pred_net: The three MuZero networks
         """
         self.lookback = config.look_back
-        self.roll_ahead = config.rool_ahead
+        self.roll_ahead = config.roll_ahead
         self.repr_net = repr_net
         self.dyn_net = dyn_net
         self.pred_net = pred_net

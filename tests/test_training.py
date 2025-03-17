@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
+from src.config.config_loader import TrainingConfig
 from src.environment import Environment
 from src.neural_network import RepresentationNetwork, DynamicsNetwork, PredictionNetwork
 from src.training_data_generator import Chunk, Episode
@@ -47,7 +48,15 @@ def minimal_config():
     - roll_ahead=1
     - learning_rate=1e-3
     """
-    return {"lookback": 0, "roll_ahead": 1, "learning_rate": 1e-3}
+
+    return TrainingConfig(
+        look_back=0,
+        batch_size=3,
+        roll_ahead=1,
+        learning_rate=1e-3,
+        betas=(0.9, 0.999),
+        epochs=1,
+    )
 
 
 @pytest.fixture
