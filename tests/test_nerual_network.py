@@ -1,7 +1,13 @@
 import pytest
 import torch
 
-from src.neural_network import (
+from src.config.config_loader import (
+    ConvLayerConfig,
+    PoolLayerConfig,
+    RepresentationNetworkConfig,
+    ResBlockConfig,
+)
+from src.nerual_networks.neural_network import (
     RepresentationNetwork,
     DynamicsNetwork,
     PredictionNetwork,
@@ -15,27 +21,53 @@ def test_representation_network_forward(batch_size):
     of correct shape and returns the correct latent shape.
     """
     input_channels = 3
-    observation_space = (8, 8)
-    latent_dim = 16
+    observation_space = (input_channels, 96, 96)
+    latent_shape = (input_channels, 6, 6)
 
+    config = RepresentationNetworkConfig(
+        downsample=[
+            ConvLayerConfig(out_channels=32, kernel_size=3, stride=2, padding=1),
+            ResBlockConfig(
+                out_channels=32,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                activation="relu",
+                pool_kernel_size=2,
+                pool_stride=2,
+            ),
+            PoolLayerConfig(kernel_size=2, stride=2, pool_type="max"),
+        ],
+        res_net=[
+            ResBlockConfig(
+                out_channels=32,
+                kernel_size=3,
+                stride=2,
+                padding=1,
+                activation="relu",
+                pool_kernel_size=0,
+                pool_stride=0,
+            )
+        ],
+    )
     # Create a RepresentationNetwork
     repr_net = RepresentationNetwork(
-        input_channels=input_channels,
-        latent_dim=latent_dim,
+        latent_shape=latent_shape,
         observation_space=observation_space,
+        config=config,
     )
 
     # Create a dummy observation
     # Shape: (batch_size, channels, height, width)
-    observation = torch.randn(batch_size, input_channels, *observation_space)
+    observation = torch.randn(batch_size, *observation_space)
 
     # Forward pass
     latent = repr_net(observation)
 
     # Check output shape: (batch_size, latent_dim)
-    assert latent.shape == (batch_size, latent_dim), (
+    assert latent.shape == (batch_size, *latent_shape), (
         f"RepresentationNetwork output shape {latent.shape} "
-        f"does not match expected {(batch_size, latent_dim)}"
+        f"does not match expected {(batch_size, *latent_shape)}"
     )
 
 

@@ -1,4 +1,4 @@
-from src.neural_network import DynamicsNetwork, PredictionNetwork
+from src.nerual_networks.neural_network import DynamicsNetwork, PredictionNetwork
 from src.search.nodes import Node
 from src.search.simulation import MuZeroSimulation
 import torch

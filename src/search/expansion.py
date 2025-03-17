@@ -1,4 +1,4 @@
-from src.neural_network import DynamicsNetwork
+from src.nerual_networks.neural_network import DynamicsNetwork
 from src.search.nodes import Node
 import random, torch
 

@@ -9,65 +9,91 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.config.config_loader import RepresentationNetworkConfig, DynamicsNetworkConfig, PredictionNetworkConfig, load_config
+from src.config.config_loader import (
+    RepresentationNetworkConfig,
+    DynamicsNetworkConfig,
+    PredictionNetworkConfig,
+    load_config,
+)
+from src.nerual_networks.network_builder import ResBlock, build_downsample_layer
 
-latent_shape: tuple[int, int, int] = load_config("config.yaml").networks.latent_shape,
+latent_shape: tuple[int, int, int] = (load_config("config.yaml").networks.latent_shape,)
 
 
 class RepresentationNetwork(nn.Module):
+    """
+    Maps the raw observation (e.g., an image) to an abstract latent state,
+    using the `RepresentationNetworkConfig` which has a `downsample` list and
+    a `res_net` list of Residual Blocks.
+    """
+
     def __init__(
         self,
-        observation_space: tuple[int, ...], 
-        config: RepresentationNetworkConfig = load_config("config.yaml").networks.representation
+        observation_space: tuple[int, int, int],
+        latent_shape: tuple[int, int, int],
+        config: RepresentationNetworkConfig = load_config(
+            "config.yaml"
+        ).networks.representation,
     ):
         """
-        Maps the raw observation (e.g. an image) to an abstract latent state.
         Args:
-            input_channels (int): Number of channels in the input observation.
-            observation_space (tuple): Spatial dimensions like (height, width) of the observation or (x,y,z).
-            latent_dim (int): Dimension of the latent state.
+            observation_space (tuple): e.g. (C, H, W)
+            latent_shape (tuple): e.g. (latent_channels, latent_height, latent_width)
+            config (RepresentationNetworkConfig): The Pydantic config containing layer definitions.
         """
-        super(RepresentationNetwork, self).__init__()
+        super().__init__()
 
-        input_channels = observation_space[0]
-        layers = config.layers
-        self.layers = []
+        # 1) Build the 'downsample' layers
+        self.downsample_layers = nn.ModuleList()
+        in_channels = observation_space[0]
+        for layer_cfg in config.downsample:
+            layer, out_channels = build_downsample_layer(layer_cfg, in_channels)
+            self.downsample_layers.append(layer)
+            in_channels = out_channels
 
-        # Define the convolutional layers
-        for layer in layers:
-            self.layers.append(nn.Conv2d(
-                in_channels=input_channels,
-                out_channels=layer.out_channels,
-                kernel_size=layer.kernel_size,
-                stride=layer.stride,
-                padding=layer.padding,
-            ))
-            input_channels = layer.out_channels
-                    
-        
+        # 2) Build the residual blocks
+        self.res_blocks = nn.ModuleList()
+        for res_cfg in config.res_net:
+            res_block = ResBlock(res_cfg, in_channels)
+            self.res_blocks.append(res_block)
+            in_channels = res_cfg.out_channels
 
-        self.conv1 = nn.Conv2d(input_channels, 32, kernel_size=3, stride=1, padding=1)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1)
+        # 3) We often need a final transformation to get the exact latent shape desired.
+        #    We can either:
+        #     a) Use a conv that ensures we have latent_shape[0] out_channels
+        #     b) Flatten and use a Linear to produce the exact dimension
+        #    In many MuZero architectures, we keep the shape as (C,H,W).
+        #    So let's do a final conv if the out_channels != latent_shape[0].
+        final_out_channels = latent_shape[0]
+        if in_channels != final_out_channels:
+            self.final_conv = nn.Conv2d(in_channels, final_out_channels, 1)
+        else:
+            self.final_conv = nn.Identity()
 
-        # Calculate the size of the output of the convolutional layers
-        conv_output_size: int = self.conv2.out_channels
-        for dim in range(len(observation_space)):
-            conv_output_size *= observation_space[dim]
+        # We also store the expected spatial dimension (latent_shape[1], latent_shape[2]).
+        # We do not strictly need to enforce it here, but you could adapt your network to do so.
+        # self.latent_height = latent_shape[1]
+        # self.latent_width = latent_shape[2]
 
-        self.fc = nn.Linear(conv_output_size, latent_dim)
-
-    def forward(self, observation: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        Args:
-            observation (Tensor): Input observation of shape (batch, channels, height, width).
-        Returns:
-            latent (Tensor): Abstract state representation of shape (batch, latent_dim).
+        Forward pass through all downsample layers, then all residual blocks,
+        then a final conv, returning a [B, C, H, W] latent.
         """
-        x = F.relu(self.conv1(observation))
-        x = F.relu(self.conv2(x))
-        x = torch.flatten(x, 1)
-        latent = torch.tanh(self.fc(x))  # tanh to bound the latent values
-        return latent
+        # 1) Downsampling path
+        for layer in self.downsample_layers:
+            x = layer(x)
+
+        # 2) Residual blocks
+        for block in self.res_blocks:
+            x = block(x)
+
+        # 3) Final conv if needed
+        x = self.final_conv(x)
+
+        # x should now be of shape (B, latent_shape[0], ?, ?)
+        # If you want to enforce the final H,W, you could add code to adapt or check here.
+        return x
 
 
 class DynamicsNetwork(nn.Module):

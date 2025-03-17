@@ -1,7 +1,7 @@
 from typing import cast
 
 from torch import Tensor, tensor
-from src.neural_network import DynamicsNetwork, PredictionNetwork
+from src.nerual_networks.neural_network import DynamicsNetwork, PredictionNetwork
 from src.search.nodes import Node
 from src.search.strategies import SimulationStrategy
 

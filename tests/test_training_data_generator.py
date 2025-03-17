@@ -6,7 +6,7 @@ from src.config.config_loader import TrainingDataGeneratorConfig
 from src.environments.car_racing import CarRacingConfig
 from src.environments.factory import create_environment
 
-from src.neural_network import (
+from src.nerual_networks.neural_network import (
     RepresentationNetwork,
     DynamicsNetwork,
     PredictionNetwork,

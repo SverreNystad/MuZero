@@ -6,7 +6,11 @@ from torch import Tensor
 
 from src.config.config_loader import TrainingConfig
 from src.environment import Environment
-from src.neural_network import RepresentationNetwork, DynamicsNetwork, PredictionNetwork
+from src.nerual_networks.neural_network import (
+    RepresentationNetwork,
+    DynamicsNetwork,
+    PredictionNetwork,
+)
 from src.training_data_generator import Chunk, Episode
 from src.training import NeuralNetworkManager
 
