@@ -182,3 +182,30 @@ def build_downsample_layer(
 
     else:
         raise ValueError(f"Unknown layer type: {layer_config.type}")
+
+
+def build_mlp(
+    layers_config: list[DenseLayerConfig], input_dim: int
+) -> Tuple[nn.Sequential, int]:
+    """
+    Given a list of DenseLayerConfig and an initial input dimension,
+    build an MLP (nn.Sequential).
+    Returns (model, output_dim).
+    """
+    modules = []
+    current_dim = input_dim
+
+    for i, layer_cfg in enumerate(layers_config):
+        # If out_features is not specified, you must decide how to handle it.
+        # Typically, it must be set or we raise an error.
+        if layer_cfg.out_features is None:
+            raise ValueError(f"DenseLayerConfig at index {i} has no out_features set.")
+
+        # Linear layer
+        modules.append(nn.Linear(current_dim, layer_cfg.out_features))
+        # Activation
+        modules.append(get_activation(layer_cfg.activation))
+
+        current_dim = layer_cfg.out_features
+
+    return nn.Sequential(*modules), current_dim

@@ -15,7 +15,11 @@ from src.config.config_loader import (
     PredictionNetworkConfig,
     load_config,
 )
-from src.nerual_networks.network_builder import ResBlock, build_downsample_layer
+from src.nerual_networks.network_builder import (
+    ResBlock,
+    build_downsample_layer,
+    build_mlp,
+)
 
 latent_shape: tuple[int, int, int] = (load_config("config.yaml").networks.latent_shape,)
 
@@ -97,72 +101,146 @@ class RepresentationNetwork(nn.Module):
 
 
 class DynamicsNetwork(nn.Module):
-    def __init__(self, latent_dim: int, num_actions: int):
+    """
+    Predict the next latent state and immediate reward,
+    given the current latent and an action.
+    """
+
+    def __init__(
+        self,
+        latent_shape: tuple[int, int, int],
+        action_space_size: int,
+        config: DynamicsNetworkConfig = load_config("config.yaml").networks.dynamics,
+    ):
         """
-        Given a latent state and an action, predicts the next latent state and an immediate reward.
         Args:
-            latent_dim (int): Dimension of the latent state.
-            num_actions (int): Number of discrete actions.
+            latent_shape: e.g. (C, H, W) for the latent representation
+            action_space_size: number of discrete actions
+            config: includes res_net + reward_net definitions (list[DenseLayerConfig])
         """
-        super(DynamicsNetwork, self).__init__()
+        super().__init__()
 
-        # Combine latent state and one-hot encoded action
-        self.fc1 = nn.Linear(latent_dim + num_actions, latent_dim)
-        self.fc2 = nn.Linear(latent_dim, latent_dim)
+        # Flatten latent dims: C*H*W
+        c, h, w = latent_shape
+        self.latent_dim = c * h * w
+        self.action_space_size = action_space_size
 
-        # Reward head (can be a scalar for each sample)
-        self.reward_head = nn.Linear(latent_dim, 1)
+        # Input dimension for both MLPs = latent_dim + action_space_size
+        input_dim = self.latent_dim + self.action_space_size
+
+        # Build MLP for next-latent (res_net)
+        self.next_latent_mlp, self.next_latent_dim = build_mlp(
+            config.res_net, input_dim
+        )
+
+        # Build MLP for reward
+        self.reward_mlp, self.reward_dim = build_mlp(config.reward_net, input_dim)
+
+        # We assume the final output of next_latent_mlp is self.latent_dim,
+        # so we can reshape back to (C,H,W).
+        # If the config doesn’t guarantee that, you must handle or enforce it.
+        if self.next_latent_dim != self.latent_dim:
+            raise ValueError(
+                "The final out_features of res_net MLP must match the flattened latent_dim, "
+                f"but got {self.next_latent_dim} vs {self.latent_dim}."
+            )
+
+        # The reward MLP final output could be 1 or any dimension you desire.
+        # Typically it’s 1 for a scalar reward.
+        if self.reward_dim != 1:
+            raise ValueError(
+                "The final out_features of reward_net MLP should be 1 for a scalar reward. "
+                f"Got {self.reward_dim}."
+            )
 
     def forward(
-        self, latent_state: torch.Tensor, action_logits: torch.Tensor
+        self,
+        latent: torch.Tensor,  # [B, C, H, W]
+        action: torch.Tensor,  # [B] integer action indices
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
-        Args:
-            latent_state (Tensor): Current latent state of shape (batch, latent_dim).
-           - action_logits (Tensor): Unnormalized log-probabilities over actions (batch, num_actions).
-        Returns:
-            next_latent (Tensor): Predicted next latent state (batch, latent_dim).
-            reward (Tensor): Predicted immediate reward (batch, 1).
+        Returns: (next_latent [B, C, H, W], reward [B, 1])
         """
-        assert latent_state.size(0) == action_logits.size(0), "Batch size mismatch"
-        # One-hot encode the action
-        action_onehot = F.one_hot(
-            action_logits, num_classes=self.fc1.in_features - latent_state.size(1)
-        ).float()
-        x = torch.cat([latent_state, action_onehot], dim=1)
-        x = F.relu(self.fc1(x))
-        next_latent = torch.tanh(self.fc2(x))
-        reward = self.reward_head(x)
+        B, C, H, W = latent.shape
+        # 1) Flatten the latent
+        latent_flat = latent.view(B, -1)
+
+        # 2) One-hot encode action
+        action_onehot = F.one_hot(action, num_classes=self.action_space_size).float()
+
+        # 3) Combine latent + action
+        combined = torch.cat(
+            [latent_flat, action_onehot], dim=1
+        )  # [B, latent_dim + action_space_size]
+
+        # 4) Predict next latent (flattened)
+        next_latent_flat = self.next_latent_mlp(combined)
+        # Reshape to (B, C, H, W)
+        next_latent = next_latent_flat.view(B, C, H, W)
+
+        # 5) Predict reward
+        reward = self.reward_mlp(combined)  # [B, 1]
+
         return next_latent, reward
 
 
 class PredictionNetwork(nn.Module):
-    def __init__(self, latent_dim: int, num_actions: int):
+    """
+    Produces a policy (actor) and a value estimate (critic) from the latent state.
+    """
+
+    def __init__(
+        self,
+        latent_shape: tuple[int, int, int],
+        action_space_size: int,
+        config: PredictionNetworkConfig = load_config(
+            "config.yaml"
+        ).networks.prediction,
+    ):
+        super().__init__()
+        c, h, w = latent_shape
+        self.latent_dim = c * h * w
+        self.action_space_size = action_space_size
+
+        # 1) Trunk (res_net) MLP
+        self.trunk, trunk_output_dim = build_mlp(config.res_net, self.latent_dim)
+
+        # 2) Value head
+        self.value_head, value_out_dim = build_mlp(config.value_net, trunk_output_dim)
+        if value_out_dim != 1:
+            raise ValueError(
+                f"Value head should produce a scalar (1). Got out_dim={value_out_dim}."
+            )
+
+        # 3) Policy head
+        self.policy_head, policy_out_dim = build_mlp(
+            config.policy_net, trunk_output_dim
+        )
+        if policy_out_dim != action_space_size:
+            raise ValueError(
+                f"Policy head should produce {action_space_size} outputs (logits). "
+                f"Got out_dim={policy_out_dim}."
+            )
+
+    def forward(
+        self, latent: torch.Tensor  # [B, C, H, W]
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
-        Produces a policy (actor) and a value estimate (critic) from the latent state.
-        Args:
-            latent_dim (int): Dimension of the latent state.
-            num_actions (int): Number of discrete actions.
+        Returns: (policy_logits [B, action_space_size], value [B, 1])
         """
-        super(PredictionNetwork, self).__init__()
+        B, C, H, W = latent.shape
 
-        # Policy head: outputs logits over actions
-        self.policy_head = nn.Linear(latent_dim, num_actions)
+        # 1) Flatten
+        x = latent.view(B, -1)
 
-        # Value head: outputs a scalar value
-        self.value_head = nn.Linear(latent_dim, 1)
+        # 2) Shared trunk
+        trunk_out = self.trunk(x)
 
-    def forward(self, latent_state: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        """
-        Args:
-            latent_state (Tensor): Latent state of shape (batch, latent_dim).
-        Returns:
-            policy_logits (Tensor): Unnormalized log-probabilities over actions (batch, num_actions).
-            value (Tensor): State value estimate (batch, 1).
-        """
-        policy_logits = self.policy_head(latent_state)
-        policy_logits = F.softmax(policy_logits, dim=1)
+        # 3) Heads
+        value = self.value_head(trunk_out)  # [B, 1]
+        policy_logits = self.policy_head(trunk_out)  # [B, action_space_size]
 
-        value = self.value_head(latent_state)
-
+        # You can apply softmax here or return raw logits:
+        # policy_probs = F.softmax(policy_logits, dim=1)
+        # Return raw logits if you prefer
         return policy_logits, value
