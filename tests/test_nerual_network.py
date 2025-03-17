@@ -74,8 +74,16 @@ def test_representation_network_forward(batch_size):
     )
 
 
-@pytest.mark.parametrize("batch_size", [1, 4])
-def test_dynamics_network_forward(batch_size):
+@pytest.mark.parametrize(
+    "batch_size, latent_shape, action_space_size",
+    [
+        (1, (8, 4, 4), 5),
+        (4, (8, 4, 4), 5),
+        (1, (16, 8, 8), 3),
+        (4, (16, 98, 98), 3),
+    ],
+)
+def test_dynamics_network_forward(batch_size, latent_shape, action_space_size):
     """
     Test that the DynamicsNetwork receives a latent tensor of shape
     (batch_size, C, H, W) and an integer tensor of action indices,
@@ -124,18 +132,22 @@ def test_dynamics_network_forward(batch_size):
     )
 
 
-@pytest.mark.parametrize("batch_size", [1, 4])
-def test_prediction_network_forward(batch_size):
+@pytest.mark.parametrize(
+    "batch_size, latent_shape, action_space_size",
+    [
+        (1, (8, 4, 4), 5),
+        (4, (8, 4, 4), 5),
+        (1, (16, 8, 8), 3),
+        (4, (16, 98, 98), 3),
+    ],
+)
+def test_prediction_network_forward(batch_size, latent_shape, action_space_size):
     """
     Test that the PredictionNetwork receives a latent tensor of shape
     (batch_size, C, H, W) and returns:
       - policy_logits of shape (batch_size, num_actions)
       - value of shape (batch_size, 1)
     """
-
-    # Suppose our latent is (C=8, H=4, W=4)
-    latent_shape = (8, 4, 4)
-    action_space_size = 5
 
     # We'll create a PredictionNetworkConfig that:
     # 1) Has a small trunk (res_net) that outputs 64,
