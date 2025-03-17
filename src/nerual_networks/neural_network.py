@@ -76,8 +76,8 @@ class RepresentationNetwork(nn.Module):
 
         # We also store the expected spatial dimension (latent_shape[1], latent_shape[2]).
         # We do not strictly need to enforce it here, but you could adapt your network to do so.
-        # self.latent_height = latent_shape[1]
-        # self.latent_width = latent_shape[2]
+        self.latent_height = latent_shape[1]
+        self.latent_width = latent_shape[2]
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -95,8 +95,9 @@ class RepresentationNetwork(nn.Module):
         # 3) Final conv if needed
         x = self.final_conv(x)
 
-        # x should now be of shape (B, latent_shape[0], ?, ?)
-        # If you want to enforce the final H,W, you could add code to adapt or check here.
+        # F.adaptive_avg_pool2d(x, (H, W)) transforms any (height, width) in the input to exactly (H, W)
+        x = F.adaptive_avg_pool2d(x, (self.latent_height, self.latent_width))
+        # x should now be of shape (B x C x H x W)
         return x
 
 
