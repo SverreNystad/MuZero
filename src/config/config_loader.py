@@ -69,12 +69,12 @@ class RepresentationNetworkConfig(BaseModel):
 
 
 class DynamicsNetworkConfig(BaseModel):
-    res_net: list[DenseLayerConfig]
+    res_net: list[ResBlockConfig]
     reward_net: list[DenseLayerConfig]
 
 
 class PredictionNetworkConfig(BaseModel):
-    res_net: list[DenseLayerConfig]
+    res_net: list[ResBlockConfig]
     value_net: list[DenseLayerConfig]
     policy_net: list[DenseLayerConfig]
 

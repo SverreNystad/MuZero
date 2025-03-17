@@ -101,146 +101,158 @@ class RepresentationNetwork(nn.Module):
 
 
 class DynamicsNetwork(nn.Module):
-    """
-    Predict the next latent state and immediate reward,
-    given the current latent and an action.
-    """
-
     def __init__(
         self,
         latent_shape: tuple[int, int, int],
-        action_space_size: int,
-        config: DynamicsNetworkConfig = load_config("config.yaml").networks.dynamics,
+        num_actions: int,
+        config: DynamicsNetworkConfig,
     ):
         """
         Args:
-            latent_shape: e.g. (C, H, W) for the latent representation
-            action_space_size: number of discrete actions
-            config: includes res_net + reward_net definitions (list[DenseLayerConfig])
+            latent_shape: (C, H, W) of the latent representation.
+            num_actions: Size of the discrete action space.
+            config: Contains `res_net` (list of ResBlockConfig) and `reward_net` (list of DenseLayerConfig).
         """
         super().__init__()
-
-        # Flatten latent dims: C*H*W
+        self.latent_shape = latent_shape
+        self.num_actions = num_actions
         c, h, w = latent_shape
-        self.latent_dim = c * h * w
-        self.action_space_size = action_space_size
 
-        # Input dimension for both MLPs = latent_dim + action_space_size
-        input_dim = self.latent_dim + self.action_space_size
+        # 1) Action embedding: we embed each action into the same dimension as a flattened latent (C*H*W)
+        self.action_embedding = nn.Embedding(num_actions, c * h * w)
 
-        # Build MLP for next-latent (res_net)
-        self.next_latent_mlp, self.next_latent_dim = build_mlp(
-            config.res_net, input_dim
-        )
+        # 2) A small linear layer to merge (latent + action) -> shape (C * H * W)
+        #    (We flatten the latent, concatenate the action embedding, then re-project.)
+        self.fc_merge = nn.Linear((c * h * w) + (c * h * w), c * h * w)
 
-        # Build MLP for reward
-        self.reward_mlp, self.reward_dim = build_mlp(config.reward_net, input_dim)
+        # 3) Build the residual tower from config.res_net
+        #    We start with in_channels = c
+        self.res_blocks = nn.ModuleList()
+        in_channels = c
+        for res_cfg in config.res_net:
+            block = ResBlock(res_cfg, in_channels=in_channels)
+            self.res_blocks.append(block)
+            in_channels = res_cfg.out_channels
 
-        # We assume the final output of next_latent_mlp is self.latent_dim,
-        # so we can reshape back to (C,H,W).
-        # If the config doesn’t guarantee that, you must handle or enforce it.
-        if self.next_latent_dim != self.latent_dim:
-            raise ValueError(
-                "The final out_features of res_net MLP must match the flattened latent_dim, "
-                f"but got {self.next_latent_dim} vs {self.latent_dim}."
-            )
+        # If the final res block changes the channel dimension, we map it back to c
+        # so the "next latent" has the same shape as the input latent.
+        if in_channels != c:
+            self.res_final = nn.Conv2d(in_channels, c, kernel_size=1)
+        else:
+            self.res_final = nn.Identity()
 
-        # The reward MLP final output could be 1 or any dimension you desire.
-        # Typically it’s 1 for a scalar reward.
-        if self.reward_dim != 1:
-            raise ValueError(
-                "The final out_features of reward_net MLP should be 1 for a scalar reward. "
-                f"Got {self.reward_dim}."
-            )
+        # 4) Build the reward MLP from config.reward_net
+        #    The input dimension for the reward MLP is c * h * w (flattened next-latent).
+        self.reward_mlp, _ = build_mlp(config.reward_net, input_dim=c * h * w)
 
     def forward(
-        self,
-        latent: torch.Tensor,  # [B, C, H, W]
-        action: torch.Tensor,  # [B] integer action indices
+        self, latent_state: torch.Tensor, action: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
-        Returns: (next_latent [B, C, H, W], reward [B, 1])
+        Args:
+            latent_state: [B, C, H, W]
+            action: [B] discrete action IDs.
+        Returns:
+            next_latent: [B, C, H, W]
+            reward: [B, 1] (or whatever size the last layer of reward_mlp produces)
         """
-        B, C, H, W = latent.shape
-        # 1) Flatten the latent
-        latent_flat = latent.view(B, -1)
+        B, C, H, W = latent_state.shape
+        assert (C, H, W) == self.latent_shape, "Latent shape mismatch."
 
-        # 2) One-hot encode action
-        action_onehot = F.one_hot(action, num_classes=self.action_space_size).float()
+        # 1) Flatten the current latent
+        latent_flat = latent_state.view(B, -1)  # [B, C*H*W]
 
-        # 3) Combine latent + action
-        combined = torch.cat(
-            [latent_flat, action_onehot], dim=1
-        )  # [B, latent_dim + action_space_size]
+        # 2) Embed the action
+        action_emb = self.action_embedding(action)  # [B, C*H*W]
 
-        # 4) Predict next latent (flattened)
-        next_latent_flat = self.next_latent_mlp(combined)
-        # Reshape to (B, C, H, W)
-        next_latent = next_latent_flat.view(B, C, H, W)
+        # 3) Merge latent + action (concatenate) -> [B, 2*C*H*W], then project down
+        merged = torch.cat([latent_flat, action_emb], dim=1)  # [B, 2*C*H*W]
+        merged = F.relu(self.fc_merge(merged))  # [B, C*H*W]
 
-        # 5) Predict reward
-        reward = self.reward_mlp(combined)  # [B, 1]
+        # 4) Reshape back to [B, C, H, W] for the residual tower
+        x = merged.view(B, C, H, W)
+
+        # 5) Pass through each residual block
+        for block in self.res_blocks:
+            x = block(x)
+
+        # 6) Possibly map back to original channel dimension c
+        next_latent = self.res_final(x)  # [B, C, H, W]
+
+        # 7) Flatten next_latent and pass to reward MLP
+        flat_next = next_latent.view(B, -1)  # [B, C*H*W]
+        reward = self.reward_mlp(flat_next)  # e.g. [B, 1] if last layer out_features=1
 
         return next_latent, reward
 
 
 class PredictionNetwork(nn.Module):
-    """
-    Produces a policy (actor) and a value estimate (critic) from the latent state.
-    """
-
     def __init__(
         self,
         latent_shape: tuple[int, int, int],
-        action_space_size: int,
-        config: PredictionNetworkConfig = load_config(
-            "config.yaml"
-        ).networks.prediction,
+        num_actions: int,
+        config: PredictionNetworkConfig,
     ):
+        """
+        Args:
+            latent_shape: (C, H, W) of the latent representation.
+            num_actions: Size of the discrete action space.
+            config: Contains `res_net`, `value_net`, and `policy_net`.
+        """
         super().__init__()
+        self.latent_shape = latent_shape
+        self.num_actions = num_actions
         c, h, w = latent_shape
-        self.latent_dim = c * h * w
-        self.action_space_size = action_space_size
 
-        # 1) Trunk (res_net) MLP
-        self.trunk, trunk_output_dim = build_mlp(config.res_net, self.latent_dim)
+        # 1) Build the residual tower from config.res_net
+        self.res_blocks = nn.ModuleList()
+        in_channels = c
+        for res_cfg in config.res_net:
+            block = ResBlock(res_cfg, in_channels=in_channels)
+            self.res_blocks.append(block)
+            in_channels = res_cfg.out_channels
 
-        # 2) Value head
-        self.value_head, value_out_dim = build_mlp(config.value_net, trunk_output_dim)
-        if value_out_dim != 1:
-            raise ValueError(
-                f"Value head should produce a scalar (1). Got out_dim={value_out_dim}."
-            )
+        # If the res blocks change the channel dimension, map back to `c` so we preserve shape for downstream usage
+        if in_channels != c:
+            self.res_final = nn.Conv2d(in_channels, c, kernel_size=1)
+        else:
+            self.res_final = nn.Identity()
 
-        # 3) Policy head
-        self.policy_head, policy_out_dim = build_mlp(
-            config.policy_net, trunk_output_dim
-        )
-        if policy_out_dim != action_space_size:
-            raise ValueError(
-                f"Policy head should produce {action_space_size} outputs (logits). "
-                f"Got out_dim={policy_out_dim}."
-            )
+        # 2) Build the value MLP from config.value_net
+        #    The input dimension is c*h*w after flatten
+        self.value_mlp, _ = build_mlp(config.value_net, input_dim=c * h * w)
 
-    def forward(
-        self, latent: torch.Tensor  # [B, C, H, W]
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+        # 3) Build the policy MLP from config.policy_net
+        self.policy_mlp, _ = build_mlp(config.policy_net, input_dim=c * h * w)
+
+    def forward(self, latent_state: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
-        Returns: (policy_logits [B, action_space_size], value [B, 1])
+        Args:
+            latent_state: [B, C, H, W]
+        Returns:
+            policy_logits: [B, num_actions]
+            value: [B, 1] (scalar value)
         """
-        B, C, H, W = latent.shape
+        B, C, H, W = latent_state.shape
+        assert (C, H, W) == self.latent_shape, "Latent shape mismatch."
 
-        # 1) Flatten
-        x = latent.view(B, -1)
+        # 1) Pass through residual tower
+        x = latent_state
+        for block in self.res_blocks:
+            x = block(x)
 
-        # 2) Shared trunk
-        trunk_out = self.trunk(x)
+        x = self.res_final(x)  # ensure channels = c
+        # Now shape = [B, c, H, W]
 
-        # 3) Heads
-        value = self.value_head(trunk_out)  # [B, 1]
-        policy_logits = self.policy_head(trunk_out)  # [B, action_space_size]
+        # 2) Flatten
+        x_flat = x.view(B, -1)  # [B, c*h*w]
 
-        # You can apply softmax here or return raw logits:
-        # policy_probs = F.softmax(policy_logits, dim=1)
-        # Return raw logits if you prefer
+        # 3) Pass to value MLP
+        value = self.value_mlp(x_flat)  # e.g. [B, 1] if last layer is out_features=1
+
+        # 4) Pass to policy MLP
+        policy_logits = self.policy_mlp(
+            x_flat
+        )  # [B, num_actions] if last layer is out_features=num_actions
+
         return policy_logits, value

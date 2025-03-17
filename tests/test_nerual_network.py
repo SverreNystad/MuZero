@@ -101,7 +101,15 @@ def test_dynamics_network_forward(batch_size, latent_shape, action_space_size):
     # And reward_net must produce 1 dimension for reward.
     dyn_config = DynamicsNetworkConfig(
         res_net=[
-            DenseLayerConfig(out_features=128, activation="relu"),
+            ResBlockConfig(
+                out_channels=128,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                activation="relu",
+                pool_kernel_size=0,
+                pool_stride=0,
+            )
         ],
         reward_net=[
             DenseLayerConfig(out_features=64, activation="relu"),
@@ -155,7 +163,15 @@ def test_prediction_network_forward(batch_size, latent_shape, action_space_size)
     # 3) A policy_net that ends in out_features=action_space_size
     pred_config = PredictionNetworkConfig(
         res_net=[
-            DenseLayerConfig(out_features=64, activation="relu"),
+            ResBlockConfig(
+                out_channels=64,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                activation="relu",
+                pool_kernel_size=0,
+                pool_stride=0,
+            )
         ],
         value_net=[
             DenseLayerConfig(out_features=1, activation="none"),
