@@ -68,7 +68,6 @@ class TrainingDataGenerator:
 
         self.num_episodes: int = config.num_episodes  # N_e
         self.max_steps: int = config.max_steps_per_episode  # N_es
-        self.look_back: int = config.look_back  # q
         self.total_time: float = config.total_time  # Not used below, but available
         self.mcts: MCTS = create_mcts(
             dynamics_network=dyn_net,

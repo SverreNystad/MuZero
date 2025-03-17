@@ -46,8 +46,6 @@ class NetworksConfig(BaseModel):
 class TrainingDataGeneratorConfig(BaseModel):
     num_episodes: int
     max_steps_per_episode: int
-    look_back: int
-    roll_ahead: int
     total_time: int
     mcts: MCTSConfig
 
@@ -57,6 +55,8 @@ class TrainingConfig(BaseModel):
     batch_size: int
     epochs: int
     betas: tuple[float, float]
+    roll_ahead: int
+    look_back: int
 
 
 class Configuration(BaseModel):

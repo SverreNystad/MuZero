@@ -8,8 +8,6 @@ environment:
 training_data_generator:
   num_episodes: 2                   # total number of episodes for self-play/learning
   max_steps_per_episode: 2
-  look_back: 4                        # number of past states to include in the input sequence
-  roll_ahead: 1
   total_time: 3600
   mcts:
       selection_strategy: "puct"          # can be "uct" or "puct"
@@ -23,6 +21,8 @@ training:
   epochs: 100
   batch_size: 32
   betas: [0.9, 0.999]
+  look_back: 4                        # number of past states to include in the input sequence
+  roll_ahead: 1
 
 # Neural network configurations
 networks:

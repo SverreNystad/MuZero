@@ -2,6 +2,7 @@ import random
 import torch
 import torch.nn.functional as F
 from torch import Tensor
+from src.config.config_loader import TrainingConfig
 from src.environment import Environment
 from src.neural_network import DynamicsNetwork, PredictionNetwork, RepresentationNetwork
 from src.training_data_generator import Episode
@@ -10,7 +11,7 @@ from src.training_data_generator import Episode
 class NeuralNetworkManager:
     def __init__(
         self,
-        config: dict,
+        config: TrainingConfig,
         repr_net: RepresentationNetwork,
         dyn_net: DynamicsNetwork,
         pred_net: PredictionNetwork,
@@ -20,8 +21,8 @@ class NeuralNetworkManager:
             config (dict): Contains hyperparameters like 'lookback', 'roll_ahead', 'learning_rate'
             repr_net, dyn_net, pred_net: The three MuZero networks
         """
-        self.lookback = config["lookback"]
-        self.roll_ahead = config["roll_ahead"]
+        self.lookback = config.look_back
+        self.roll_ahead = config.rool_ahead
         self.repr_net = repr_net
         self.dyn_net = dyn_net
         self.pred_net = pred_net
@@ -30,7 +31,8 @@ class NeuralNetworkManager:
             list(self.repr_net.parameters())
             + list(self.dyn_net.parameters())
             + list(self.pred_net.parameters()),
-            lr=config["learning_rate"],
+            lr=config.learning_rate,
+            betas=config.betas,
         )
 
     def train(self, episode_history: list[Episode], mbs: int):
