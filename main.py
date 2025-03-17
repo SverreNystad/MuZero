@@ -21,7 +21,7 @@ def generate_training_data() -> None:
 
     channels, height, width = env.get_observation_space()
     num_actions = len(env.get_action_space())
-    latent_dim = config.networks.representation.latent_dim
+    latent_dim = config.networks.representation.latent_shape
     # Load the representation network.
     repr_net = RepresentationNetwork(
         input_channels=channels,

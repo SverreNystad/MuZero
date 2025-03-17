@@ -9,10 +9,16 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from src.config.config_loader import RepresentationNetworkConfig, DynamicsNetworkConfig, PredictionNetworkConfig, load_config
+
+latent_shape: tuple[int, int, int] = load_config("config.yaml").networks.latent_shape,
+
 
 class RepresentationNetwork(nn.Module):
     def __init__(
-        self, input_channels: int, observation_space: tuple[int, ...], latent_dim: int
+        self,
+        observation_space: tuple[int, ...], 
+        config: RepresentationNetworkConfig = load_config("config.yaml").networks.representation
     ):
         """
         Maps the raw observation (e.g. an image) to an abstract latent state.
@@ -22,6 +28,23 @@ class RepresentationNetwork(nn.Module):
             latent_dim (int): Dimension of the latent state.
         """
         super(RepresentationNetwork, self).__init__()
+
+        input_channels = observation_space[0]
+        layers = config.layers
+        self.layers = []
+
+        # Define the convolutional layers
+        for layer in layers:
+            self.layers.append(nn.Conv2d(
+                in_channels=input_channels,
+                out_channels=layer.out_channels,
+                kernel_size=layer.kernel_size,
+                stride=layer.stride,
+                padding=layer.padding,
+            ))
+            input_channels = layer.out_channels
+                    
+        
 
         self.conv1 = nn.Conv2d(input_channels, 32, kernel_size=3, stride=1, padding=1)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1)

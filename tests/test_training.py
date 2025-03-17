@@ -66,7 +66,7 @@ def tiny_repr_net():
     input_channels=1, observation_space=(1,1), latent_dim=2
     """
     return RepresentationNetwork(
-        input_channels=1, observation_space=(1, 1), latent_dim=2
+        observation_space=(1, 1), latent_shape=(2, 2, 2), config=None
     )
 
 

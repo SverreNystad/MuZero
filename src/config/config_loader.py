@@ -1,12 +1,12 @@
+from enum import StrEnum
 import os
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 
 from pydantic import BaseModel, Field
 import yaml
 
 from src.environments.car_racing import CarRacingConfig
 from src.environments.connect_four import ConnectFourConfig
-from src.search.factory import MCTSConfig
 
 
 CONFIG_PATH = os.path.dirname(__file__)
@@ -14,30 +14,66 @@ CONFIG_PATH = os.path.dirname(__file__)
 
 EnvironmentConfig = Union[CarRacingConfig, ConnectFourConfig]
 
+class SelectionStrategyType(StrEnum):
+    uct = "uct"
+    puct = "puct"
 
-class LayerConfig(BaseModel):
-    type: str  # e.g. "conv", "linear"
-    out_channels: Optional[int] = None  # for conv or linear layers
-    kernel_size: Optional[int] = None  # for conv layers
-    stride: Optional[int] = 1  # for conv layers
-    padding: Optional[int] = 0  # for conv layers
+
+class MCTSConfig(BaseModel):
+    selection_strategy: SelectionStrategyType = SelectionStrategyType.puct
+    max_iterations: int
+    max_time: int
+
+
+class ConvLayerConfig(BaseModel):
+    type: Optional[Literal["conv_layer"]] = "conv_layer"
+    out_channels: int
+    kernel_size: int
+    stride: int
+    padding: int
+    activation: Optional[str] = "relu"  # e.g. "relu", "tanh", "sigmoid", "none"
+
+
+class PoolLayerConfig(BaseModel):
+    type: Optional[Literal["pool_layer"]] = "pool_layer"
+    kernel_size: int
+    stride: int
+    pool_type: str = "max"  # e.g. "max", "avg"
+
+
+class ResBlockConfig(BaseModel):
+    type: Optional[Literal["res_block"]] = "res_block"
+    out_channels: int
+    kernel_size: int
+    stride: int
+    padding: int
+    activation: str
+    pool_kernel_size: int
+    pool_stride: int
+
+class DenseLayerConfig(BaseModel):
+    out_features: Optional[int] = None  # for conv or linear layers
     activation: Optional[str] = "relu"  # e.g. "relu", "tanh", "sigmoid", "none"
 
 
 class RepresentationNetworkConfig(BaseModel):
-    latent_shape: tuple[int, int, int]
-    layers: list[LayerConfig]
+    downsample: list[Union[ConvLayerConfig, PoolLayerConfig, ResBlockConfig]] = Field(..., discriminator="type")
+    res_net: list[ResBlockConfig]
 
 
 class DynamicsNetworkConfig(BaseModel):
-    layers: list[LayerConfig]
+    res_net: list[DenseLayerConfig]
+    reward_net: list[DenseLayerConfig]
 
 
 class PredictionNetworkConfig(BaseModel):
-    layers: list[LayerConfig]
+    res_net: list[DenseLayerConfig]
+    value_net: list[DenseLayerConfig]
+    policy_net: list[DenseLayerConfig]
 
 
 class NetworksConfig(BaseModel):
+    latent_shape: tuple[int, int, int]
     representation: RepresentationNetworkConfig
     dynamics: DynamicsNetworkConfig
     prediction: PredictionNetworkConfig

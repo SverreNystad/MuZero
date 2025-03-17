@@ -28,35 +28,69 @@ training:
 
 # Neural network configurations 
 networks:
+  latent_shape: [6, 6, 3] 
   representation:
-    latent_shape: [6, 6, 3] 
-    layers:
-      - type: "conv"
-        out_channels: 32
+    downsample:
+      - type: "conv_layer" # in 96x96x3 out 48x48x3
+        out_channels: 3
+        kernel_size: 2
+        stride: 2
+        padding: 0
+        activation: "relu"
+      - type: "res_block" # in 48x48x3 out 48x48x3
+        in_channels: 3
+        out_channels: 3
         kernel_size: 3
         stride: 1
         padding: 1
         activation: "relu"
-      - type: "conv"
-        out_channels: 64
+      - type: "pool_layer" # in 48x48x3 out 24x24x3
+        kernel_size: 2
+        stride: 2
+        padding: 0
+        pool_type: "max"
+      - type: "conv_layer" # in 24x24x3 out 12x12x3
+        out_channels: 3
+        kernel_size: 2
+        stride: 2
+        padding: 0
+        activation: "relu"
+      - type: "pool_layer" # in 12x12x3 out 6x6x3
+        kernel_size: 2
+        stride: 2
+        padding: 0
+        pool_type: "max"
+    res_net:
+      - in_channels: 3
+        out_channels: 3
         kernel_size: 3
         stride: 1
         padding: 1
         activation: "relu"
-      - type: "linear"
-        out_channels: 128
-        activation: "tanh"
   dynamics:
-    layers:
-      - type: "linear"
-        out_channels: 128
+    res:
+      - in_channels: 3
+        out_channels: 3
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu" 
+    reward:
+      - out_features: 1
         activation: "relu"
-      - type: "linear"
-        out_channels: 128
-        activation: "tanh"
   prediction:
-    base_layers:
-
-    policy_layers:
-
-    value_layers:
+    res:
+      - in_channels: 3
+        out_channels: 3
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu"
+    value:
+      - out_features: 1
+        activation: "relu"
+    policy:
+      - out_features: 3
+        activation: "relu"
+      
+      

@@ -9,19 +9,8 @@ from src.search.backpropagation import Backpropagation
 from src.neural_network import DynamicsNetwork, PredictionNetwork
 from src.search.simulation import MuZeroSimulation
 from src.search.strategies import SelectionStrategy
+from src.config.config_loader import MCTSConfig, SelectionStrategyType
 
-
-class SelectionStrategyType(StrEnum):
-    uct = "uct"
-    puct = "puct"
-
-
-class MCTSConfig(BaseModel):
-    selection_strategy: SelectionStrategyType = SelectionStrategyType.puct
-    max_iterations: int
-    max_time: int
-    depth: int = 1
-    discount_factor: float = 0.998
 
 
 def create_mcts(
