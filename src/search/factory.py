@@ -20,6 +20,8 @@ class MCTSConfig(BaseModel):
     selection_strategy: SelectionStrategyType = SelectionStrategyType.puct
     max_iterations: int
     max_time: int
+    depth: int = 1
+    discount_factor: float = 0.998
 
 
 def create_mcts(
@@ -49,8 +51,10 @@ def create_mcts(
             selection_strategy = PUCT()
 
     # Create simulation and backpropagation strategies.
-    simulation_strategy = MuZeroSimulation(prediction_network)
-    backpropagation_strategy = Backpropagation()
+    simulation_strategy = MuZeroSimulation(
+        dynamics_network, prediction_network, config.depth
+    )
+    backpropagation_strategy = Backpropagation(config.discount_factor)
 
     # Instantiate the MCTS object with the given strategies.
     mcts_instance = MCTS(

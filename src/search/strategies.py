@@ -21,7 +21,7 @@ class SelectionStrategy(Protocol):
 
 
 class SimulationStrategy(Protocol):
-    def __call__(self, node: Node) -> float:
+    def __call__(self, node: Node) -> list[float]:
         """
         Simulate a play-out (rollout) from the given node to the end of the game.
 
@@ -34,7 +34,7 @@ class SimulationStrategy(Protocol):
 
 
 class BackpropagationStrategy(Protocol):
-    def __call__(self, node: Node, value: float, to_play: int) -> None:
+    def __call__(self, node: Node, rewards: list[float], to_play: int) -> None:
         """
         Backpropagate the simulation result up through the tree.
 

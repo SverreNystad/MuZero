@@ -13,6 +13,8 @@ training_data_generator:
       selection_strategy: "puct"          # can be "uct" or "puct"
       max_iterations: 1000                       # maximum iterations (set to 0 if using time-based termination)
       max_time: 10.0                      # maximum search time per move (in seconds)
+      depth: 10
+      discount_factor: 0.998
 
 
 # Training hyperparameters
@@ -53,11 +55,8 @@ networks:
         out_channels: 128
         activation: "tanh"
   prediction:
-    layers:
-      - type: "linear"
-        out_channels: 64
-        activation: "relu"
-      - type: "linear"
-        out_channels: 1
-        activation: "none"
+    base_layers:
 
+    policy_layers:
+
+    value_layers:

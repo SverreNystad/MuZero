@@ -56,6 +56,7 @@ def test_mcts(env_config):
         selection_strategy="uct",
         max_iterations=5,
         max_time=0.0,  # Iteration-based termination
+        depth=1,
     )
     mcts = create_mcts(
         dynamics_network=dyn_net,
@@ -121,6 +122,7 @@ def test_mcts_with_max_iterations(env_config):
         selection_strategy="uct",
         max_iterations=max_itr,
         max_time=0.0,  # Iteration-based termination.
+        depth=1,
     )
     mcts = create_mcts(
         dynamics_network=dyn_net,
@@ -184,6 +186,7 @@ def test_mcts_with_max_time(env_config):
         selection_strategy="uct",
         max_iterations=0,  # Time-based termination mode.
         max_time=max_time,
+        depth=1,
     )
     mcts = create_mcts(
         dynamics_network=dyn_net,

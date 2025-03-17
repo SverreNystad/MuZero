@@ -59,8 +59,8 @@ class MCTS:
         """
         chosen_node = self.selection(node)
         expanded_node = expand_node(chosen_node, self.actions, self.dynamics_network)
-        value = self.simulation(expanded_node)
-        self.backpropagation(expanded_node, value, chosen_node.to_play)
+        rewards = self.simulation(expanded_node)
+        self.backpropagation(expanded_node, rewards, chosen_node.to_play)
 
 
 def _soft_max(values: list[float]) -> list[float]:

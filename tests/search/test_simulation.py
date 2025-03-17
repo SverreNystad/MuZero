@@ -1,4 +1,4 @@
-from src.neural_network import PredictionNetwork
+from src.neural_network import DynamicsNetwork, PredictionNetwork
 from src.search.nodes import Node
 from src.search.simulation import MuZeroSimulation
 import torch
@@ -6,11 +6,17 @@ import torch
 
 def test_muzero_simulation():
     """No actual rollouts, only predictions from current latent state"""
-    predictor = PredictionNetwork(latent_dim=10, num_actions=2)
-    simulation = MuZeroSimulation(predictor)
-    node = Node(torch.randn(1, 10))
-    value = simulation(node)
-    assert isinstance(value, float)
+    num_actions = 2
+    latent_dim = 10
+    depth = 5
+    predictor = PredictionNetwork(latent_dim=latent_dim, num_actions=num_actions)
+    dynamic_network = DynamicsNetwork(latent_dim=latent_dim, num_actions=num_actions)
+    simulation = MuZeroSimulation(dynamic_network, predictor, depth=depth)
+    node = Node(torch.randn(latent_dim))
+    rewards = simulation(node)
+    assert isinstance(rewards, list)
+    assert len(rewards) == depth + 1
+    assert all(isinstance(reward, float) for reward in rewards)
 
 
 def test_alphazero_simulation():

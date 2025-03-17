@@ -8,7 +8,7 @@ import torch
 @pytest.mark.parametrize(
     "strategy",
     [
-        (Backpropagation()),
+        (Backpropagation(1.0)),
     ],
 )
 def test_backpropagation_single_player(strategy: BackpropagationStrategy):
@@ -28,7 +28,7 @@ def test_backpropagation_single_player(strategy: BackpropagationStrategy):
     child2.value_sum = 10
 
     # Act
-    strategy(child2, 5, player)
+    strategy(child2, [5], player)
 
     # Assert
     # The backpropagation should update the value_sum and visit_count of the child and parent
@@ -45,7 +45,7 @@ def test_backpropagation_single_player(strategy: BackpropagationStrategy):
 @pytest.mark.parametrize(
     "strategy",
     [
-        (Backpropagation()),
+        (Backpropagation(1.0)),
     ],
 )
 def test_backpropagation_two_player(strategy: BackpropagationStrategy):
@@ -66,7 +66,7 @@ def test_backpropagation_two_player(strategy: BackpropagationStrategy):
     child2.value_sum = 10
 
     # Act
-    strategy(child2, 5, player_2)
+    strategy(child2, [5], player_2)
 
     # Assert
     # The backpropagation should update the value_sum and visit_count of the child and parent

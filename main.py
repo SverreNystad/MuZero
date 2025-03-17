@@ -1,3 +1,4 @@
+from typing import Callable
 from src.environments.factory import create_environment
 from src.neural_network import RepresentationNetwork, DynamicsNetwork, PredictionNetwork
 from src.training_data_generator import (
@@ -57,7 +58,7 @@ def generate_training_data() -> None:
     print(f"Training data saved to {path}")
 
 
-def _profile_code(func: callable, *args, **kwargs) -> None:
+def _profile_code(func: Callable, *args, **kwargs) -> None:
     """
     Profile the code using cProfile.
     """
