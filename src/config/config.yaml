@@ -24,10 +24,10 @@ training:
   look_back: 4                        # number of past states to include in the input sequence
   roll_ahead: 1
 
-# Neural network configurations
+# Neural network configurations 
 networks:
   representation:
-    latent_dim: 128
+    latent_shape: [6, 6, 3] 
     layers:
       - type: "conv"
         out_channels: 32

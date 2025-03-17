@@ -25,7 +25,7 @@ class LayerConfig(BaseModel):
 
 
 class RepresentationNetworkConfig(BaseModel):
-    latent_dim: int
+    latent_shape: tuple[int, int, int]
     layers: list[LayerConfig]
 
 
