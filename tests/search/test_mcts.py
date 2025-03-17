@@ -12,6 +12,11 @@ from src.nerual_networks.neural_network import (
 )
 from src.search.factory import MCTSConfig, create_mcts
 from src.search.nodes import Node
+from tests.nerual_networks.test_networks import (
+    tiny_dyn_net,
+    tiny_pred_net,
+    tiny_repr_net,
+)
 
 
 @pytest.mark.parametrize(
@@ -31,22 +36,19 @@ def test_mcts(env_config):
 
     # Get the initial observation from the environment.
     observation = env.reset()
-    channels, height, width = env.get_observation_space()
 
     # Determine the number of actions.
     num_actions = len(env.get_action_space())
     # Instantiate the real networks.
-    latent_dim = 16
-    rep_net = RepresentationNetwork(
-        input_channels=channels,
-        observation_space=(height, width),
-        latent_dim=latent_dim,
+    latent_shape = (2, 2, 2)
+    repr_net = tiny_repr_net(
+        latent_shape=latent_shape, observation_space=env.get_observation_space()
     )
-    dyn_net = DynamicsNetwork(latent_dim=latent_dim, num_actions=num_actions)
-    pred_net = PredictionNetwork(latent_dim=latent_dim, num_actions=num_actions)
+    dyn_net = tiny_dyn_net(latent_shape, num_actions=num_actions)
+    pred_net = tiny_pred_net(latent_shape, num_actions=num_actions)
 
     # Compute the latent state from the preprocessed observation.
-    latent_state = rep_net(observation)
+    latent_state = repr_net(observation)
 
     # Define the set of possible actions.
     actions = torch.arange(num_actions)
@@ -57,6 +59,7 @@ def test_mcts(env_config):
         max_iterations=5,
         max_time=0.0,  # Iteration-based termination
         depth=1,
+        discount_factor=1.0,
     )
     mcts = create_mcts(
         dynamics_network=dyn_net,
@@ -100,21 +103,18 @@ def test_mcts_with_max_iterations(env_config):
 
     # Get the initial observation from the environment.
     observation = env.reset()
-    channels, height, width = env.get_observation_space()
 
     # Determine the number of actions.
     num_actions = len(env.get_action_space())
     # Instantiate the real networks.
-    latent_dim = 16
-    rep_net = RepresentationNetwork(
-        input_channels=channels,
-        observation_space=(height, width),
-        latent_dim=latent_dim,
+    latent_shape = (2, 2, 2)
+    repr_net = tiny_repr_net(
+        latent_shape=latent_shape, observation_space=env.get_observation_space()
     )
-    dyn_net = DynamicsNetwork(latent_dim=latent_dim, num_actions=num_actions)
-    pred_net = PredictionNetwork(latent_dim=latent_dim, num_actions=num_actions)
+    dyn_net = tiny_dyn_net(latent_shape, num_actions=num_actions)
+    pred_net = tiny_pred_net(latent_shape, num_actions=num_actions)
 
-    latent_state = rep_net(observation)
+    latent_state = repr_net(observation)
     actions = torch.arange(num_actions)
 
     max_itr = 10
@@ -122,6 +122,7 @@ def test_mcts_with_max_iterations(env_config):
         selection_strategy="uct",
         max_iterations=max_itr,
         max_time=0.0,  # Iteration-based termination.
+        discount_factor=1.0,
         depth=1,
     )
     mcts = create_mcts(
@@ -162,23 +163,19 @@ def test_mcts_with_max_time(env_config):
     # Create the environment using ConnectFour with a configuration.
     env = create_environment(env_config)
 
-    # Get the initial observation from the environment.
-    observation = env.reset()
-    channels, height, width = env.get_observation_space()
-
     # Determine the number of actions.
     num_actions = len(env.get_action_space())
+    # Get the initial observation from the environment.
+    observation = env.reset()
+    latent_shape = (2, 2, 2)
     # Instantiate the real networks.
-    latent_dim = 16
-    rep_net = RepresentationNetwork(
-        input_channels=channels,
-        observation_space=(height, width),
-        latent_dim=latent_dim,
+    repr_net = tiny_repr_net(
+        latent_shape=latent_shape, observation_space=env.get_observation_space()
     )
-    dyn_net = DynamicsNetwork(latent_dim=latent_dim, num_actions=num_actions)
-    pred_net = PredictionNetwork(latent_dim=latent_dim, num_actions=num_actions)
+    dyn_net = tiny_dyn_net(latent_shape, num_actions=num_actions)
+    pred_net = tiny_pred_net(latent_shape, num_actions=num_actions)
 
-    latent_state = rep_net(observation)
+    latent_state = repr_net(observation)
     actions = torch.arange(num_actions)
 
     max_time = 1  # seconds

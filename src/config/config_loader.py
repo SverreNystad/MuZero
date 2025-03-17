@@ -24,6 +24,8 @@ class MCTSConfig(BaseModel):
     selection_strategy: SelectionStrategyType = SelectionStrategyType.puct
     max_iterations: int
     max_time: int
+    depth: int = 5
+    discount_factor: float = 1.0
 
 
 class ConvLayerConfig(BaseModel):
