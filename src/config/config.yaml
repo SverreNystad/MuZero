@@ -44,6 +44,8 @@ networks:
         stride: 1
         padding: 1
         activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
       - type: "pool_layer" # in 48x48x3 out 24x24x3
         kernel_size: 2
         stride: 2
@@ -67,29 +69,36 @@ networks:
         stride: 1
         padding: 1
         activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
   dynamics:
-    res:
+    res_net:
       - in_channels: 3
         out_channels: 3
         kernel_size: 3
         stride: 1
         padding: 1
         activation: "relu" 
-    reward:
+        pool_stride: 1
+        pool_kernel_size: 1
+    reward_net:
       - out_features: 1
         activation: "relu"
   prediction:
-    res:
+    res_net:
       - in_channels: 3
         out_channels: 3
         kernel_size: 3
         stride: 1
         padding: 1
         activation: "relu"
-    value:
+        pool_stride: 1
+        pool_kernel_size: 1
+        
+    value_net:
       - out_features: 1
         activation: "relu"
-    policy:
+    policy_net:
       - out_features: 3
         activation: "relu"
       

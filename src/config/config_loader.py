@@ -1,6 +1,6 @@
 from enum import StrEnum
 import os
-from typing import Literal, Optional, Union
+from typing import Annotated, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
 import yaml
@@ -14,6 +14,7 @@ CONFIG_PATH = os.path.dirname(__file__)
 
 EnvironmentConfig = Union[CarRacingConfig, ConnectFourConfig]
 
+
 class SelectionStrategyType(StrEnum):
     uct = "uct"
     puct = "puct"
@@ -26,7 +27,7 @@ class MCTSConfig(BaseModel):
 
 
 class ConvLayerConfig(BaseModel):
-    type: Optional[Literal["conv_layer"]] = "conv_layer"
+    type: Literal["conv_layer"] = "conv_layer"
     out_channels: int
     kernel_size: int
     stride: int
@@ -35,14 +36,14 @@ class ConvLayerConfig(BaseModel):
 
 
 class PoolLayerConfig(BaseModel):
-    type: Optional[Literal["pool_layer"]] = "pool_layer"
+    type: Literal["pool_layer"] = "pool_layer"
     kernel_size: int
     stride: int
     pool_type: str = "max"  # e.g. "max", "avg"
 
 
 class ResBlockConfig(BaseModel):
-    type: Optional[Literal["res_block"]] = "res_block"
+    type: Literal["res_block"] = "res_block"
     out_channels: int
     kernel_size: int
     stride: int
@@ -51,13 +52,19 @@ class ResBlockConfig(BaseModel):
     pool_kernel_size: int
     pool_stride: int
 
+
 class DenseLayerConfig(BaseModel):
     out_features: Optional[int] = None  # for conv or linear layers
     activation: Optional[str] = "relu"  # e.g. "relu", "tanh", "sigmoid", "none"
 
 
+DownsampleLayerConfig = Annotated[
+    Union[ConvLayerConfig, PoolLayerConfig, ResBlockConfig], Field(discriminator="type")
+]
+
+
 class RepresentationNetworkConfig(BaseModel):
-    downsample: list[Union[ConvLayerConfig, PoolLayerConfig, ResBlockConfig]] = Field(..., discriminator="type")
+    downsample: list[DownsampleLayerConfig]
     res_net: list[ResBlockConfig]
 
 
