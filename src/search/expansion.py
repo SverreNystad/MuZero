@@ -1,4 +1,4 @@
-from src.neural_network import DynamicsNetwork
+from src.nerual_networks.neural_network import DynamicsNetwork
 from src.search.nodes import Node
 import random, torch
 
@@ -32,4 +32,4 @@ def _transform_latent_state(
     batch_size: int, latent_state: torch.Tensor
 ) -> torch.Tensor:
     """Transforms the latent state into the correct shape for the batch size"""
-    return latent_state.repeat(batch_size, 1)
+    return latent_state.repeat(batch_size, 1, 1, 1)

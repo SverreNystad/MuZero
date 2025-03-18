@@ -8,7 +8,11 @@ from dataclasses import dataclass
 
 from src.config.config_loader import TrainingDataGeneratorConfig
 from src.environment import Environment
-from src.neural_network import RepresentationNetwork, PredictionNetwork, DynamicsNetwork
+from src.nerual_networks.neural_network import (
+    RepresentationNetwork,
+    PredictionNetwork,
+    DynamicsNetwork,
+)
 from src.search.factory import create_mcts
 from src.search.mcts import MCTS
 from src.search.nodes import Node

@@ -2,7 +2,7 @@ import time
 import torch
 import math
 
-from src.neural_network import DynamicsNetwork
+from src.nerual_networks.neural_network import DynamicsNetwork
 from src.search.nodes import Node
 from src.search.strategies import (
     SelectionStrategy,

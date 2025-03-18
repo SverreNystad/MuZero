@@ -1,27 +1,12 @@
-from enum import StrEnum
-
-from pydantic import BaseModel
 import torch
 
 from src.search.mcts import MCTS
 from src.search.selection import UCT, PUCT
 from src.search.backpropagation import Backpropagation
-from src.neural_network import DynamicsNetwork, PredictionNetwork
+from src.nerual_networks.neural_network import DynamicsNetwork, PredictionNetwork
 from src.search.simulation import MuZeroSimulation
 from src.search.strategies import SelectionStrategy
-
-
-class SelectionStrategyType(StrEnum):
-    uct = "uct"
-    puct = "puct"
-
-
-class MCTSConfig(BaseModel):
-    selection_strategy: SelectionStrategyType = SelectionStrategyType.puct
-    max_iterations: int
-    max_time: int
-    depth: int = 1
-    discount_factor: float = 0.998
+from src.config.config_loader import MCTSConfig, SelectionStrategyType
 
 
 def create_mcts(

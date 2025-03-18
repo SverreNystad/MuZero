@@ -6,7 +6,11 @@ from torch import Tensor
 
 from src.config.config_loader import TrainingConfig
 from src.environment import Environment
-from src.neural_network import RepresentationNetwork, DynamicsNetwork, PredictionNetwork
+from src.nerual_networks.neural_network import (
+    RepresentationNetwork,
+    DynamicsNetwork,
+    PredictionNetwork,
+)
 from src.training_data_generator import Chunk, Episode
 from src.training import NeuralNetworkManager
 
@@ -66,7 +70,7 @@ def tiny_repr_net():
     input_channels=1, observation_space=(1,1), latent_dim=2
     """
     return RepresentationNetwork(
-        input_channels=1, observation_space=(1, 1), latent_dim=2
+        observation_space=(1, 1), latent_shape=(2, 2, 2), config=None
     )
 
 
