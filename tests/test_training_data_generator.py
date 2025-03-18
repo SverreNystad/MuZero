@@ -6,7 +6,7 @@ from src.config.config_loader import TrainingDataGeneratorConfig
 from src.environments.car_racing import CarRacingConfig
 from src.environments.factory import create_environment
 
-from src.neural_network import (
+from src.nerual_networks.neural_network import (
     RepresentationNetwork,
     DynamicsNetwork,
     PredictionNetwork,
@@ -21,6 +21,11 @@ from src.training_data_generator import (
     load_training_data,
     load_all_training_data,
 )
+from tests.nerual_networks.test_networks import (
+    tiny_dyn_net,
+    tiny_pred_net,
+    tiny_repr_net,
+)
 
 
 @pytest.fixture
@@ -32,41 +37,18 @@ def car_racing_env():
     return create_environment(env_config)
 
 
-@pytest.fixture
-def minimal_networks(car_racing_env):
-    """
-    Returns a tuple of (rep_net, dyn_net, pred_net) with minimal dimensions
-    sufficient for a test.
-    Adjust the input_channels, observation_space, latent_dim, and num_actions
-    as needed.
-    """
-    channels, height, width = car_racing_env.get_observation_space()
-    latent_dim = 8
-    num_actions = len(car_racing_env.get_action_space())
-
-    rep_net = RepresentationNetwork(
-        input_channels=channels,
-        observation_space=(height, width),
-        latent_dim=latent_dim,
-    )
-    dyn_net = DynamicsNetwork(
-        latent_dim=latent_dim,
-        num_actions=num_actions,
-    )
-    pred_net = PredictionNetwork(
-        latent_dim=latent_dim,
-        num_actions=num_actions,
-    )
-
-    return rep_net, dyn_net, pred_net
-
-
-def test_generate_training_data_gives_episode_data(car_racing_env, minimal_networks):
+def test_generate_training_data_gives_episode_data(car_racing_env):
     """
     Test that TrainingDataGenerator properly creates a list of Episode objects
     with at least one Chunk each.
     """
-    rep_net, dyn_net, pred_net = minimal_networks
+    latent_shape = (2, 2, 2)
+    rep_net = tiny_repr_net(
+        latent_shape=latent_shape,
+        observation_space=car_racing_env.get_observation_space(),
+    )
+    dyn_net = tiny_dyn_net(latent_shape, num_actions=5)
+    pred_net = tiny_pred_net(latent_shape, num_actions=5)
 
     # Example config for generating a small amount of data.
     mcts_config = MCTSConfig(

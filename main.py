@@ -1,6 +1,10 @@
 from typing import Callable
 from src.environments.factory import create_environment
-from src.neural_network import RepresentationNetwork, DynamicsNetwork, PredictionNetwork
+from src.nerual_networks.neural_network import (
+    RepresentationNetwork,
+    DynamicsNetwork,
+    PredictionNetwork,
+)
 from src.training_data_generator import (
     TrainingDataGenerator,
     save_training_data,
@@ -19,26 +23,27 @@ def generate_training_data() -> None:
     # Create the environment using the factory method.
     env = create_environment(config.environment)
 
-    channels, height, width = env.get_observation_space()
     num_actions = len(env.get_action_space())
-    latent_dim = config.networks.representation.latent_dim
+    latent_shape = config.networks.latent_shape
     # Load the representation network.
     repr_net = RepresentationNetwork(
-        input_channels=channels,
-        observation_space=(height, width),
-        latent_dim=latent_dim,
+        observation_space=env.get_observation_space(),
+        latent_shape=latent_shape,
+        config=config.networks.representation,
     )
 
     # Load the dynamics network.
     dyn_net = DynamicsNetwork(
-        latent_dim=latent_dim,
+        latent_shape=latent_shape,
         num_actions=num_actions,
+        config=config.networks.dynamics,
     )
 
     # Load the prediction network.
     pred_net = PredictionNetwork(
-        latent_dim=latent_dim,
+        latent_shape=latent_shape,
         num_actions=num_actions,
+        config=config.networks.prediction,
     )
 
     # Create the training data generator.
