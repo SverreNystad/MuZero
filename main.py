@@ -34,14 +34,16 @@ def generate_training_data() -> None:
 
     # Load the dynamics network.
     dyn_net = DynamicsNetwork(
-        latent_dim=latent_dim,
+        latent_shape=latent_shape,
         num_actions=num_actions,
+        config=config.networks.dynamics,
     )
 
     # Load the prediction network.
     pred_net = PredictionNetwork(
-        latent_dim=latent_dim,
+        latent_shape=latent_shape,
         num_actions=num_actions,
+        config=config.networks.prediction,
     )
 
     # Create the training data generator.
