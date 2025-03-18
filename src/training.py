@@ -114,7 +114,7 @@ class NeuralNetworkManager:
             # Calculate the next latent state and reward
             action_i = Ab_k[i]
             if not isinstance(action_i, torch.Tensor):
-                action_i = torch.tensor(action_i, dtype=torch.long)
+                action_i = torch.tensor([action_i], dtype=torch.long)
             next_latent_state, pred_reward = self.dyn_net(latent_state, action_i)
 
             # Single-step "PVR"
