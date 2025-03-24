@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 from tqdm import trange
-from src.config.config_loader import TrainingConfig
+from src.config.config_loader import EnvironmentConfig, TrainingConfig
 from src.environment import Environment
 from src.neural_networks.neural_network import (
     DynamicsNetwork,
@@ -30,6 +30,7 @@ class NeuralNetworkManager:
             config: Contains hyperparameters like 'lookback', 'roll_ahead', 'learning_rate', etc.
             repr_net, dyn_net, pred_net: The three MuZero networks
         """
+        self.config = config
         self.lookback = config.look_back
         self.roll_ahead = config.roll_ahead
         self.mbs = config.mini_batch_size
@@ -51,6 +52,8 @@ class NeuralNetworkManager:
         After training, automatically saves the model in /models/<counter>_<datetime>/,
         where <counter> is the next available integer after scanning existing folders.
         """
+        final_loss_val = 0.0
+
         for _ in trange(self.mbs):
             # Randomly pick an episode
             b = random.randrange(len(episode_history))
@@ -77,7 +80,9 @@ class NeuralNetworkManager:
             total_loss.backward()
             self.optimizer.step()
 
-        self.save_model()
+        final_loss_val = total_loss.item()
+
+        return final_loss_val
 
     def bptt(
         self, Sb_k: list[Environment], Ab_k: list[Tensor], PVR: tuple
@@ -202,13 +207,10 @@ class NeuralNetworkManager:
         """
         return -torch.sum(target_policy * torch.log(pred_policy))
 
-    def save_model(self) -> None:
+    def save_models(self, final_loss_val: float = 0.0, env_config: EnvironmentConfig = None) -> None:
         """
         Save the neural networks to disk in /models/<counter>_<datetime>/.
-
-        Args:
-            base_path (str): The base path to save models (e.g. "models").
-            counter (int): Numerical counter to include in the folder name.
+        Also create a .txt file with hyperparameters and the final loss.
         """
         base_path = "models"
         counter = self._get_next_model_counter(base_path)
@@ -222,6 +224,24 @@ class NeuralNetworkManager:
         torch.save(self.repr_net.state_dict(), os.path.join(full_path, "repr.pth"))
         torch.save(self.dyn_net.state_dict(), os.path.join(full_path, "dyn.pth"))
         torch.save(self.pred_net.state_dict(), os.path.join(full_path, "pred.pth"))
+
+        # Write hyperparameters and final loss into a text file
+        txt_path = os.path.join(full_path, "training_info.txt")
+        with open(txt_path, "w") as f:
+            f.write("MuZero Training Info\n")
+            f.write(f"Environment: {env_config.type}\n")
+            f.write(f"Model saved at: {now_str}\n\n")
+            f.write("Hyperparameters:\n")
+            f.write(f"lookback: {self.config.look_back}\n")
+            f.write(f"roll_ahead: {self.config.roll_ahead}\n")
+            f.write(f"mini_batch_size: {self.config.mini_batch_size}\n")
+            f.write(f"learning_rate: {self.config.learning_rate}\n")
+            f.write(f"betas: {self.config.betas}\n\n")
+            f.write(f"Final Loss: {final_loss_val}\n\n")
+            f.write(f"Network configuration:\n\n")
+            f.write(f"{self.repr_net}\n\n")
+            f.write(f"{self.dyn_net}\n\n")
+            f.write(f"{self.pred_net}\n\n")
 
         print(f"Saved model to: {full_path}/")
 
