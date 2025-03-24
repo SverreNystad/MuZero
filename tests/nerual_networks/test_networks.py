@@ -154,5 +154,5 @@ def test_minimal_forward_pass(observation_space, latent_shape, num_actions):
     assert latent.shape == (1, *latent_shape)
     assert next_latent.shape == (1, *latent_shape)
     assert reward.shape == (1, 1)
-    assert policy_logits.shape == (1, 2)
+    assert policy_logits.shape == (1, num_actions)
     assert value.shape == (1, 1)
