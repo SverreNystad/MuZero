@@ -1,0 +1,8 @@
+Hyperparameters:
+lookback: 4
+roll_ahead: 1
+mini_batch_size: 256
+learning_rate: 0.001
+betas: (0.9, 0.999)
+
+Final Loss: inf

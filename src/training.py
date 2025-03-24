@@ -2,6 +2,7 @@ import os
 import re
 import datetime
 import random
+import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torch import Tensor
@@ -16,6 +17,7 @@ from src.neural_networks.neural_network import (
 from src.training_data_generator import Episode
 
 FOLDER_REGEX = re.compile(r"^(\d+)_(\d{8}_\d{6})$")
+BASE_PATH = "models"
 
 class NeuralNetworkManager:
     def __init__(
@@ -37,6 +39,8 @@ class NeuralNetworkManager:
         self.repr_net = repr_net
         self.dyn_net = dyn_net
         self.pred_net = pred_net
+        self.loss_history = []
+
 
         self.optimizer = torch.optim.Adam(
             list(self.repr_net.parameters())
@@ -79,6 +83,8 @@ class NeuralNetworkManager:
             total_loss = self.bptt(Sb_k, Ab_k, (Pb_k, Vb_k, Rb_k))
             total_loss.backward()
             self.optimizer.step()
+
+            self.loss_history.append(total_loss.item())
 
         final_loss_val = total_loss.item()
 
@@ -212,13 +218,12 @@ class NeuralNetworkManager:
         Save the neural networks to disk in /models/<counter>_<datetime>/.
         Also create a .txt file with hyperparameters and the final loss.
         """
-        base_path = "models"
-        counter = self._get_next_model_counter(base_path)
+        counter = self._get_next_model_counter(BASE_PATH)
 
         # Create folder name: e.g. "0_20250324_134501"
         now_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         folder_name = f"{counter}_{now_str}"
-        full_path = os.path.join(base_path, folder_name)
+        full_path = os.path.join(BASE_PATH, folder_name)
         os.makedirs(full_path, exist_ok=True)
 
         torch.save(self.repr_net.state_dict(), os.path.join(full_path, "repr.pth"))
@@ -244,6 +249,8 @@ class NeuralNetworkManager:
             f.write(f"{self.pred_net}\n\n")
 
         print(f"Saved model to: {full_path}/")
+
+        self.plot_loss(full_path)
 
     def load_model(self, base_path: str, counter: int) -> None:
         """
@@ -301,3 +308,13 @@ class NeuralNetworkManager:
                 max_counter = max(max_counter, c_val)
 
         return max_counter + 1
+
+    def plot_loss(self, path: str) -> None:
+        """Plot the loss history during training."""
+        img_path = os.path.join(path, "training_loss.png")
+        plt.plot(self.loss_history)
+        plt.xlabel("Mini-batch")
+        plt.ylabel("Loss")
+        plt.title("Training Loss")
+        plt.savefig(img_path)
+        plt.show()

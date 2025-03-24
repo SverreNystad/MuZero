@@ -1,0 +1,103 @@
+MuZero Training Info
+Environment: CarRacing
+Model saved at: 20250324_142603
+
+Hyperparameters:
+lookback: 4
+roll_ahead: 1
+mini_batch_size: 256
+learning_rate: 0.001
+betas: (0.9, 0.999)
+
+Final Loss: inf
+
+Network configuration:
+
+RepresentationNetwork(
+  (downsample_layers): ModuleList(
+    (0): ConvLayer(
+      (conv): Conv2d(3, 3, kernel_size=(2, 2), stride=(2, 2))
+      (activation): ReLU(inplace=True)
+    )
+    (1): ResBlock(
+      (activation): ReLU(inplace=True)
+      (conv1): Conv2d(3, 3, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+      (bn1): BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (conv2): Conv2d(3, 3, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+      (bn2): BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (pool): Identity()
+    )
+    (2): PoolLayer(
+      (pool): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+    )
+    (3): ConvLayer(
+      (conv): Conv2d(3, 3, kernel_size=(2, 2), stride=(2, 2))
+      (activation): ReLU(inplace=True)
+    )
+    (4): PoolLayer(
+      (pool): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+    )
+  )
+  (res_blocks): ModuleList(
+    (0): ResBlock(
+      (activation): ReLU(inplace=True)
+      (conv1): Conv2d(3, 3, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+      (bn1): BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (conv2): Conv2d(3, 3, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+      (bn2): BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (pool): Identity()
+    )
+  )
+  (final_conv): Conv2d(3, 6, kernel_size=(1, 1), stride=(1, 1))
+)
+
+DynamicsNetwork(
+  (action_embedding): Embedding(5, 108)
+  (fc_merge): Linear(in_features=216, out_features=108, bias=True)
+  (res_blocks): ModuleList(
+    (0): ResBlock(
+      (activation): ReLU(inplace=True)
+      (conv1): Conv2d(6, 3, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+      (bn1): BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (conv2): Conv2d(3, 3, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+      (bn2): BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (downsample): Sequential(
+        (0): Conv2d(6, 3, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (1): BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      )
+      (pool): Identity()
+    )
+  )
+  (res_final): Conv2d(3, 6, kernel_size=(1, 1), stride=(1, 1))
+  (reward_mlp): Sequential(
+    (0): Linear(in_features=108, out_features=1, bias=True)
+    (1): ReLU(inplace=True)
+  )
+)
+
+PredictionNetwork(
+  (res_blocks): ModuleList(
+    (0): ResBlock(
+      (activation): ReLU(inplace=True)
+      (conv1): Conv2d(6, 3, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+      (bn1): BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (conv2): Conv2d(3, 3, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+      (bn2): BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (downsample): Sequential(
+        (0): Conv2d(6, 3, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        (1): BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      )
+      (pool): Identity()
+    )
+  )
+  (res_final): Conv2d(3, 6, kernel_size=(1, 1), stride=(1, 1))
+  (value_mlp): Sequential(
+    (0): Linear(in_features=108, out_features=1, bias=True)
+    (1): ReLU(inplace=True)
+  )
+  (policy_mlp): Sequential(
+    (0): Linear(in_features=108, out_features=5, bias=True)
+    (1): ReLU(inplace=True)
+  )
+)
+
