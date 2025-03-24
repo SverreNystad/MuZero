@@ -3,7 +3,7 @@ import torch
 from src.search.mcts import MCTS
 from src.search.selection import UCT, PUCT
 from src.search.backpropagation import Backpropagation
-from src.nerual_networks.neural_network import DynamicsNetwork, PredictionNetwork
+from src.neural_networks.neural_network import DynamicsNetwork, PredictionNetwork
 from src.search.simulation import MuZeroSimulation
 from src.search.strategies import SelectionStrategy
 from src.config.config_loader import MCTSConfig, SelectionStrategyType

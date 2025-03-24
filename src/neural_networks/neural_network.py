@@ -15,7 +15,7 @@ from src.config.config_loader import (
     PredictionNetworkConfig,
     load_config,
 )
-from src.nerual_networks.network_builder import (
+from src.neural_networks.network_builder import (
     ResBlock,
     build_downsample_layer,
     build_mlp,

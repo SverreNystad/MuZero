@@ -11,12 +11,12 @@ from src.config.config_loader import (
     DenseLayerConfig,
     ResBlockConfig,
 )
-from src.nerual_networks.neural_network import (
+from src.neural_networks.neural_network import (
     RepresentationNetwork,
     DynamicsNetwork,
     PredictionNetwork,
 )
-from src.nerual_networks.network_builder import ResBlock, get_activation, build_mlp
+from src.neural_networks.network_builder import ResBlock, get_activation, build_mlp
 
 
 def tiny_representation_config() -> RepresentationNetworkConfig:

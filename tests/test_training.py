@@ -3,7 +3,7 @@ import pytest
 from dataclasses import dataclass
 
 from src.config.config_loader import TrainingConfig
-from src.nerual_networks.neural_network import (
+from src.neural_networks.neural_network import (
     RepresentationNetwork,
     DynamicsNetwork,
     PredictionNetwork,

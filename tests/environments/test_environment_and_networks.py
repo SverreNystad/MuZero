@@ -4,7 +4,7 @@ from src.environment import Environment
 from src.environments.factory import create_environment
 from src.environments.car_racing import CarRacingConfig
 from src.environments.connect_four import ConnectFourConfig
-from src.nerual_networks.neural_network import RepresentationNetwork
+from src.neural_networks.neural_network import RepresentationNetwork
 from tests.nerual_networks.test_networks import tiny_repr_net
 
 

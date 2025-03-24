@@ -1,5 +1,5 @@
 from src.search.expansion import expand_node, _transform_latent_state
-from src.nerual_networks.neural_network import DynamicsNetwork
+from src.neural_networks.neural_network import DynamicsNetwork
 from src.search.nodes import Node
 import torch
 import pytest

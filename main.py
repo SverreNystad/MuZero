@@ -1,6 +1,6 @@
 from typing import Callable
 from src.environments.factory import create_environment
-from src.nerual_networks.neural_network import (
+from src.neural_networks.neural_network import (
     RepresentationNetwork,
     DynamicsNetwork,
     PredictionNetwork,

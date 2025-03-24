@@ -10,7 +10,7 @@ from src.config.config_loader import (
     RepresentationNetworkConfig,
     ResBlockConfig,
 )
-from src.nerual_networks.neural_network import (
+from src.neural_networks.neural_network import (
     RepresentationNetwork,
     DynamicsNetwork,
     PredictionNetwork,

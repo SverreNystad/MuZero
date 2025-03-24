@@ -8,7 +8,7 @@ from torch import Tensor
 from tqdm import trange
 from src.config.config_loader import TrainingConfig
 from src.environment import Environment
-from src.nerual_networks.neural_network import (
+from src.neural_networks.neural_network import (
     DynamicsNetwork,
     PredictionNetwork,
     RepresentationNetwork,
