@@ -41,6 +41,7 @@ def minimal_config():
         learning_rate=1e-3,
         betas=(0.9, 0.999),
         epochs=1,
+        mini_batch_size=2,
     )
 
 
@@ -63,7 +64,7 @@ def minimal_nets() -> NetworksConfig:
     - num_actions: number of output actions (for policy).
     """
     input_channels = 1
-    observation_space = (4, 4)
+    observation_space = (1, 4, 4)
     latent_shape = (2, 4, 4)
     num_actions = 2
 
@@ -115,7 +116,7 @@ def test_single_update(minimal_config, minimal_nets):
     episode_history = [ep]
 
     # Run exactly one update
-    manager.train(episode_history, mbs=1)
+    manager.train(episode_history)
 
     # Check that at least some gradients were computed.
     for param in manager.repr_net.parameters():
@@ -157,7 +158,7 @@ def test_multiple_updates(minimal_config, minimal_nets):
     episode_history = [ep, ep]
 
     # Perform 5 BPTT updates
-    manager.train(episode_history, mbs=5)
+    manager.train(episode_history)
 
     # Verify that the prediction network parameters are still accessible (i.e. not None)
     for param in manager.pred_net.parameters():
@@ -187,7 +188,7 @@ def test_no_valid_rollout(minimal_config, minimal_nets):
     ep = Episode(chunks=[state0])
 
     # Run training; it should handle the case gracefully
-    manager.train([ep], mbs=3)
+    manager.train([ep])
 
 
 @pytest.mark.parametrize(
@@ -219,6 +220,7 @@ def test_training_various_configs(
         learning_rate=1e-3,
         betas=(0.9, 0.999),
         epochs=epochs,
+        mini_batch_size=mbs,
     )
     manager = NeuralNetworkManager(
         config=config,
@@ -244,7 +246,7 @@ def test_training_various_configs(
     ep = Episode(chunks=chunks)
     episode_history = [ep]
 
-    manager.train(episode_history, mbs=mbs)
+    manager.train(episode_history)
 
     # Check that the prediction network's parameters are still accessible.
     for param in manager.pred_net.parameters():
@@ -289,7 +291,7 @@ def test_training_with_varied_episode_counts(
         ep = Episode(chunks=[s0, s1])
         episode_history.append(ep)
 
-    manager.train(episode_history, mbs=2)
+    manager.train(episode_history)
 
     for param in manager.pred_net.parameters():
         assert param is not None
