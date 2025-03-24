@@ -1,3 +1,6 @@
+import os
+import re
+import datetime
 import random
 import torch
 import torch.nn.functional as F
@@ -12,6 +15,7 @@ from src.nerual_networks.neural_network import (
 )
 from src.training_data_generator import Episode
 
+FOLDER_REGEX = re.compile(r"^(\d+)_(\d{8}_\d{6})$")
 
 class NeuralNetworkManager:
     def __init__(
@@ -23,7 +27,7 @@ class NeuralNetworkManager:
     ):
         """
         Args:
-            config (dict): Contains hyperparameters like 'lookback', 'roll_ahead', 'learning_rate'
+            config: Contains hyperparameters like 'lookback', 'roll_ahead', 'learning_rate', etc.
             repr_net, dyn_net, pred_net: The three MuZero networks
         """
         self.lookback = config.look_back
@@ -44,10 +48,8 @@ class NeuralNetworkManager:
     def train(self, episode_history: list[Episode]):
         """
         Train MuZero's neural networks using Backpropagation Through Time (BPTT).
-
-        Args:
-            episode_history (list[Episode]): A list of episodes.
-            mbs (int): The mini-batch size (number of BPTT updates).
+        After training, automatically saves the model in /models/<counter>_<datetime>/,
+        where <counter> is the next available integer after scanning existing folders.
         """
         for _ in trange(self.mbs):
             # Randomly pick an episode
@@ -64,9 +66,7 @@ class NeuralNetworkManager:
 
             # Gather data
             Sb_k = [episode.chunks[i].state for i in range(start_idx, k + 1)]
-            Ab_k = [
-                episode.chunks[i].best_action for i in range(k, k + self.roll_ahead)
-            ]
+            Ab_k = [episode.chunks[i].best_action for i in range(k, k + self.roll_ahead)]
             Pb_k = [episode.chunks[i].policy for i in range(k, k + self.roll_ahead + 1)]
             Vb_k = [episode.chunks[i].value for i in range(k, k + self.roll_ahead + 1)]
             Rb_k = [episode.chunks[i + 1].reward for i in range(k, k + self.roll_ahead)]
@@ -76,6 +76,8 @@ class NeuralNetworkManager:
             total_loss = self.bptt(Sb_k, Ab_k, (Pb_k, Vb_k, Rb_k))
             total_loss.backward()
             self.optimizer.step()
+
+        self.save_model()
 
     def bptt(
         self, Sb_k: list[Environment], Ab_k: list[Tensor], PVR: tuple
@@ -153,7 +155,7 @@ class NeuralNetworkManager:
         Calculate the loss of the neural networks.
 
         Args:
-            PVR (tuple): A tuple of (policies, values, rewards), each a *list* even if length=1.
+            PVR (tuple): A tuple of (policies, values, rewards), each a list (even if length=1).
             reward (Tensor|None): The predicted reward from the dynamics network.
             value (Tensor|None):  The predicted value from the prediction network.
             policy (Tensor|None): The predicted policy from the prediction network.
@@ -163,7 +165,6 @@ class NeuralNetworkManager:
         """
         Πb_k, Vb_k, Rb_k = PVR
 
-        # Start all sub-losses at 0
         policy_loss_val = torch.zeros(1, dtype=torch.float32)
         value_loss_val = torch.zeros(1, dtype=torch.float32)
         reward_loss_val = torch.zeros(1, dtype=torch.float32)
@@ -171,7 +172,7 @@ class NeuralNetworkManager:
         # 1) Policy loss
         if policy is not None and len(Πb_k) > 0:
             target_policy = Πb_k[0]
-            # pred_policy shape: [1, num_actions]; we do policy[0] to drop the batch
+            # pred_policy shape: [1, num_actions]; use policy[0] to drop the batch dimension
             policy_loss_val = self.policy_loss(target_policy, policy[0])
 
         # 2) Value loss
@@ -184,7 +185,6 @@ class NeuralNetworkManager:
             target_reward = Rb_k[0]
             reward_loss_val = self.reward_loss(target_reward, reward[0])
 
-        # (Optional) Add L2 regularization, etc.
         return policy_loss_val + value_loss_val + reward_loss_val
 
     def reward_loss(self, target_reward: Tensor, pred_reward: Tensor) -> Tensor:
@@ -196,7 +196,88 @@ class NeuralNetworkManager:
         return F.mse_loss(pred_value, target_value)
 
     def policy_loss(self, target_policy: Tensor, pred_policy: Tensor) -> Tensor:
-        """Compute cross-entropy or KL divergence for policy.
-        We treat MuZero's approach: l_p(π, p) = - sum( π * log p ).
+        """
+        Compute cross-entropy or KL divergence for the policy:
+        l_p(π, p) = - sum( π * log p ).
         """
         return -torch.sum(target_policy * torch.log(pred_policy))
+
+    def save_model(self) -> None:
+        """
+        Save the neural networks to disk in /models/<counter>_<datetime>/.
+
+        Args:
+            base_path (str): The base path to save models (e.g. "models").
+            counter (int): Numerical counter to include in the folder name.
+        """
+        base_path = "models"
+        counter = self._get_next_model_counter(base_path)
+
+        # Create folder name: e.g. "0_20250324_134501"
+        now_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        folder_name = f"{counter}_{now_str}"
+        full_path = os.path.join(base_path, folder_name)
+        os.makedirs(full_path, exist_ok=True)
+
+        torch.save(self.repr_net.state_dict(), os.path.join(full_path, "repr.pth"))
+        torch.save(self.dyn_net.state_dict(), os.path.join(full_path, "dyn.pth"))
+        torch.save(self.pred_net.state_dict(), os.path.join(full_path, "pred.pth"))
+
+        print(f"Saved model to: {full_path}/")
+
+    def load_model(self, base_path: str, counter: int) -> None:
+        """
+        Load the neural networks from the *newest* subfolder matching <counter>_<datetime>.
+
+        Args:
+            base_path (str): The base path where models are saved (e.g. "models").
+            counter (int): Numerical counter used in the folder name (e.g. 7).
+        """
+        subfolders = os.listdir(base_path)
+        # Filter out those matching <counter>_<datetime>
+        matching = []
+        for folder in subfolders:
+            match = FOLDER_REGEX.match(folder)
+            if match:
+                c_val = int(match.group(1))
+                dt_str = match.group(2)  # e.g. '20250324_134501'
+                if c_val == counter:
+                    matching.append((folder, dt_str))
+
+        if not matching:
+            raise FileNotFoundError(
+                f"No folder found in '{base_path}' with counter = {counter}"
+            )
+
+        # Sort by dt_str descending so the newest is first
+        matching.sort(key=lambda x: x[1], reverse=True)
+        latest_folder = matching[0][0]  # e.g. "7_20250324_134501"
+
+        full_path = os.path.join(base_path, latest_folder)
+        repr_path = os.path.join(full_path, "repr.pth")
+        dyn_path = os.path.join(full_path, "dyn.pth")
+        pred_path = os.path.join(full_path, "pred.pth")
+
+        self.repr_net.load_state_dict(torch.load(repr_path))
+        self.dyn_net.load_state_dict(torch.load(dyn_path))
+        self.pred_net.load_state_dict(torch.load(pred_path))
+
+        print(f"Loaded model from: {full_path}/")
+
+    def _get_next_model_counter(self, base_path: str) -> int:
+        """
+        Look for all subfolders in `base_path` matching the pattern <counter>_<datetime>,
+        find the maximum <counter> so far, and return max+1. If none exist, return 0.
+        """
+        if not os.path.isdir(base_path):
+            os.makedirs(base_path)
+
+        subfolders = os.listdir(base_path)
+        max_counter = -1
+        for folder in subfolders:
+            match = FOLDER_REGEX.match(folder)
+            if match:
+                c_val = int(match.group(1))
+                max_counter = max(max_counter, c_val)
+
+        return max_counter + 1
