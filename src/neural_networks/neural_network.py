@@ -10,6 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from src.config.config_loader import (
+    DenseLayerConfig,
     RepresentationNetworkConfig,
     DynamicsNetworkConfig,
     PredictionNetworkConfig,
@@ -224,7 +225,11 @@ class PredictionNetwork(nn.Module):
         self.value_mlp, _ = build_mlp(config.value_net, input_dim=c * h * w)
 
         # 3) Build the policy MLP from config.policy_net
-        self.policy_mlp, _ = build_mlp(config.policy_net, input_dim=c * h * w)
+        policy_mlp_architecture = config.policy_net
+        policy_mlp_architecture.append(
+            DenseLayerConfig(out_features=num_actions, activation="softmax")
+        )
+        self.policy_mlp, _ = build_mlp(policy_mlp_architecture, input_dim=c * h * w)
 
     def forward(self, latent_state: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
@@ -252,8 +257,6 @@ class PredictionNetwork(nn.Module):
         value = self.value_mlp(x_flat)  # e.g. [B, 1] if last layer is out_features=1
 
         # 4) Pass to policy MLP
-        policy_logits = self.policy_mlp(
-            x_flat
-        )  # [B, num_actions] if last layer is out_features=num_actions
+        policy_logits = self.policy_mlp(x_flat)  # [B, num_actions]
 
         return policy_logits, value

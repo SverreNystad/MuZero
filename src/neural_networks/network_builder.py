@@ -25,6 +25,8 @@ def get_activation(activation_name: Optional[str]) -> nn.Module:
             return nn.Tanh()
         case "sigmoid":
             return nn.Sigmoid()
+        case "softmax":
+            return nn.Softmax(dim=1)
         case _:
             raise ValueError(f"Unknown activation function: {activation_name}")
 
