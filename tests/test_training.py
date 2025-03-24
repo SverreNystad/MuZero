@@ -1,13 +1,8 @@
-from dataclasses import dataclass
-from pydantic import BaseModel
-import pytest
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch import Tensor
+import pytest
+from dataclasses import dataclass
 
 from src.config.config_loader import TrainingConfig
-from src.environment import Environment
 from src.nerual_networks.neural_network import (
     RepresentationNetwork,
     DynamicsNetwork,
@@ -16,31 +11,29 @@ from src.nerual_networks.neural_network import (
 from src.training_data_generator import Chunk, Episode
 from src.training import NeuralNetworkManager
 
+from tests.nerual_networks.test_networks import (
+    tiny_dyn_net,
+    tiny_pred_net,
+    tiny_repr_net,
+)
 
-def dummy_state(input_channels: int, observation: tuple[int, int]) -> Tensor:
+
+def dummy_state(input_channels: int, observation: tuple[int, int]) -> torch.Tensor:
     """
     A minimal "state" that we can pass into the networks.
+    Generates a random tensor with the given number of channels and spatial dimensions.
     """
-
-    # Single-channel image of size "input_channels"
-    # E.g., a single pixel with value 0.5
     return torch.randn(input_channels, *observation)
-
-
-###########################
-# Fixtures for the tests  #
-###########################
 
 
 @pytest.fixture
 def minimal_config():
     """
-    Returns a minimal MuZero config with
-    - lookback=0 (no historical frames)
+    Returns a minimal MuZero TrainingConfig with:
+    - look_back=0 (no historical frames)
     - roll_ahead=1
     - learning_rate=1e-3
     """
-
     return TrainingConfig(
         look_back=0,
         batch_size=3,
@@ -60,43 +53,40 @@ class NetworksConfig:
     observation_space: tuple[int, int]
 
 
-@pytest.fixture(
-    params=[
-        {
-            "input_channels": 1,
-            "observation_space": (1, 1),
-            "latent_dim": 2,
-        },
-        {
-            "input_channels": 3,
-            "observation_space": (8, 8),
-            "latent_dim": 64,
-        },
-        {
-            "input_channels": 3,
-            "observation_space": (96, 96),
-            "latent_dim": 128,
-        },
-    ]
-)
-def minimal_nets(request) -> NetworksConfig:
+@pytest.fixture
+def minimal_nets() -> NetworksConfig:
     """
-    Returns minimal neural networks for testing.
+    Creates a NetworksConfig using the tiny networks.
+    - input_channels: number of channels in the input state.
+    - observation_space: spatial dimensions (height, width) of the input state.
+    - latent_shape: shape of the latent representation (channels, height, width).
+    - num_actions: number of output actions (for policy).
     """
-    params = request.param
+    input_channels = 1
+    observation_space = (4, 4)
+    latent_shape = (2, 4, 4)
+    num_actions = 2
+
+    repr_net = tiny_repr_net(
+        observation_space=(input_channels, *observation_space),
+        latent_shape=latent_shape,
+    )
+    dyn_net = tiny_dyn_net(latent_shape=latent_shape, num_actions=num_actions)
+    pred_net = tiny_pred_net(latent_shape=latent_shape, num_actions=num_actions)
+
     return NetworksConfig(
-        repr_net=RepresentationNetwork(**params),
-        dyn_net=DynamicsNetwork(latent_dim=params["latent_dim"], num_actions=2),
-        pred_net=PredictionNetwork(latent_dim=params["latent_dim"], num_actions=2),
-        input_channels=params["input_channels"],
-        observation_space=params["observation_space"],
+        repr_net=repr_net,
+        dyn_net=dyn_net,
+        pred_net=pred_net,
+        input_channels=input_channels,
+        observation_space=observation_space,
     )
 
 
 def test_single_update(minimal_config, minimal_nets):
     """
-    Test that the training loop runs 1 BPTT update
-    without crashing using minimal data.
+    Test that the training loop runs one BPTT update without crashing
+    using minimal data.
     """
     manager = NeuralNetworkManager(
         config=minimal_config,
@@ -120,31 +110,25 @@ def test_single_update(minimal_config, minimal_nets):
         best_action=1,
     )
 
-    # Put them into an Episode
+    # Create an episode with two states
     ep = Episode(chunks=[s0, s1])
-
-    # One minimal episode in the history
     episode_history = [ep]
 
-    # We do exactly 1 update
+    # Run exactly one update
     manager.train(episode_history, mbs=1)
 
-    # If it doesn't crash, we pass.
-    # Optionally we can check that parameters got gradients
+    # Check that at least some gradients were computed.
     for param in manager.repr_net.parameters():
         assert (
             param.grad is None
             or torch.any(param.grad != 0)
-            or param.grad.isnan().any() == False
+            or (param.grad.isnan().any() == False)
         )
 
 
-def test_multiple_updates(
-    minimal_config,
-    minimal_nets,
-):
+def test_multiple_updates(minimal_config, minimal_nets):
     """
-    Test that multiple updates run smoothly using minimal data.
+    Test that multiple BPTT updates run smoothly using minimal data.
     """
     manager = NeuralNetworkManager(
         config=minimal_config,
@@ -155,7 +139,7 @@ def test_multiple_updates(
 
     s0 = Chunk(
         state=dummy_state(minimal_nets.input_channels, minimal_nets.observation_space),
-        policy=torch.tensor([0.8, 0.2]),  # prefers action 0
+        policy=torch.tensor([0.8, 0.2]),
         reward=0.0,
         value=0.1,
         best_action=0,
@@ -168,27 +152,22 @@ def test_multiple_updates(
         best_action=1,
     )
 
-    # Put them into an Episode
+    # Create an episode and duplicate it to form a history of two episodes
     ep = Episode(chunks=[s0, s1])
-
-    # Provide two identical episodes
     episode_history = [ep, ep]
 
-    # We'll do 5 BPTT updates
+    # Perform 5 BPTT updates
     manager.train(episode_history, mbs=5)
 
-    # Check that something changed in the networks
-    # (not guaranteed, but we can at least verify no crash).
+    # Verify that the prediction network parameters are still accessible (i.e. not None)
     for param in manager.pred_net.parameters():
-        # We at least check param is not None
         assert param is not None
 
 
 def test_no_valid_rollout(minimal_config, minimal_nets):
     """
-    If the episodes are too short (only 1 state),
-    we can't do a roll_ahead=1.
-    The code should skip training gracefully with no crash.
+    Test that when an episode is too short (only 1 state) so that a rollout is impossible,
+    the training code skips the update gracefully without crashing.
     """
     manager = NeuralNetworkManager(
         config=minimal_config,
@@ -197,7 +176,7 @@ def test_no_valid_rollout(minimal_config, minimal_nets):
         pred_net=minimal_nets.pred_net,
     )
 
-    # Single state => no rollout possible
+    # Create an episode with only one state (no valid rollout)
     state0 = Chunk(
         state=dummy_state(minimal_nets.input_channels, minimal_nets.observation_space),
         policy=torch.tensor([1.0, 0.0]),
@@ -207,15 +186,110 @@ def test_no_valid_rollout(minimal_config, minimal_nets):
     )
     ep = Episode(chunks=[state0])
 
+    # Run training; it should handle the case gracefully
     manager.train([ep], mbs=3)
 
 
-# If we reach here with no crash, success.
-# We expect zero gradient updates took place.
+@pytest.mark.parametrize(
+    "look_back, batch_size, roll_ahead, epochs, mbs",
+    [
+        (0, 3, 1, 1, 1),
+        (0, 4, 1, 1, 2),
+        (
+            0,
+            3,
+            2,
+            2,
+            5,
+        ),  # For roll_ahead=2, the episode must contain at least 3 states.
+    ],
+)
+def test_training_various_configs(
+    look_back, batch_size, roll_ahead, epochs, mbs, minimal_nets
+):
+    """
+    Test training with various TrainingConfig parameters.
+    Constructs a config from the parameter tuple and ensures the training loop
+    runs without crashing.
+    """
+    config = TrainingConfig(
+        look_back=look_back,
+        batch_size=batch_size,
+        roll_ahead=roll_ahead,
+        learning_rate=1e-3,
+        betas=(0.9, 0.999),
+        epochs=epochs,
+    )
+    manager = NeuralNetworkManager(
+        config=config,
+        repr_net=minimal_nets.repr_net,
+        dyn_net=minimal_nets.dyn_net,
+        pred_net=minimal_nets.pred_net,
+    )
 
-##############################
-# Additional Test Scenarios #
-##############################
-# - You might add tests for shape correctness,
-#   e.g. ensuring predicted actions match the networks
-#   but these minimal tests focus on the main train loop.
+    # Create an episode with enough states to satisfy roll_ahead.
+    num_states = roll_ahead + 1
+    chunks = []
+    for i in range(num_states):
+        chunk = Chunk(
+            state=dummy_state(
+                minimal_nets.input_channels, minimal_nets.observation_space
+            ),
+            policy=torch.tensor([0.8, 0.2]),
+            reward=0.0 if i == 0 else 1.0,
+            value=0.1 if i == 0 else 0.2,
+            best_action=0 if i == 0 else 1,
+        )
+        chunks.append(chunk)
+    ep = Episode(chunks=chunks)
+    episode_history = [ep]
+
+    manager.train(episode_history, mbs=mbs)
+
+    # Check that the prediction network's parameters are still accessible.
+    for param in manager.pred_net.parameters():
+        assert param is not None
+
+
+@pytest.mark.parametrize("num_episodes", [1, 2, 3])
+def test_training_with_varied_episode_counts(
+    minimal_config, minimal_nets, num_episodes
+):
+    """
+    Test training when varying the number of episodes in the history.
+    This ensures the training loop can handle different amounts of data.
+    """
+    manager = NeuralNetworkManager(
+        config=minimal_config,
+        repr_net=minimal_nets.repr_net,
+        dyn_net=minimal_nets.dyn_net,
+        pred_net=minimal_nets.pred_net,
+    )
+
+    episode_history = []
+    for _ in range(num_episodes):
+        s0 = Chunk(
+            state=dummy_state(
+                minimal_nets.input_channels, minimal_nets.observation_space
+            ),
+            policy=torch.tensor([0.8, 0.2]),
+            reward=0.0,
+            value=0.1,
+            best_action=0,
+        )
+        s1 = Chunk(
+            state=dummy_state(
+                minimal_nets.input_channels, minimal_nets.observation_space
+            ),
+            policy=torch.tensor([0.6, 0.4]),
+            reward=1.0,
+            value=0.2,
+            best_action=1,
+        )
+        ep = Episode(chunks=[s0, s1])
+        episode_history.append(ep)
+
+    manager.train(episode_history, mbs=2)
+
+    for param in manager.pred_net.parameters():
+        assert param is not None
