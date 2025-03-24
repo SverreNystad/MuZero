@@ -1,6 +1,6 @@
 MuZero Training Info
 Environment: CarRacing
-Model saved at: 20250324_143547
+Model saved at: 20250324_151231
 
 Hyperparameters:
 lookback: 4
@@ -9,7 +9,7 @@ mini_batch_size: 256
 learning_rate: 0.001
 betas: (0.9, 0.999)
 
-Final Loss: inf
+Final Loss: 1.1127671003341675
 
 Network configuration:
 
@@ -98,6 +98,8 @@ PredictionNetwork(
   (policy_mlp): Sequential(
     (0): Linear(in_features=108, out_features=5, bias=True)
     (1): ReLU(inplace=True)
+    (2): Linear(in_features=5, out_features=5, bias=True)
+    (3): Softmax(dim=1)
   )
 )
 

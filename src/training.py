@@ -17,7 +17,7 @@ from src.neural_networks.neural_network import (
 from src.training_data_generator import Episode
 
 FOLDER_REGEX = re.compile(r"^(\d+)_(\d{8}_\d{6})$")
-BASE_PATH = "models"
+BASE_PATH = "training_runs"
 
 class NeuralNetworkManager:
     def __init__(
@@ -223,15 +223,17 @@ class NeuralNetworkManager:
         # Create folder name: e.g. "0_20250324_134501"
         now_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         folder_name = f"{counter}_{now_str}"
-        full_path = os.path.join(BASE_PATH, folder_name)
-        os.makedirs(full_path, exist_ok=True)
+        model_path = os.path.join(BASE_PATH, "models/" + folder_name)
+        os.makedirs(model_path, exist_ok=True)
 
-        torch.save(self.repr_net.state_dict(), os.path.join(full_path, "repr.pth"))
-        torch.save(self.dyn_net.state_dict(), os.path.join(full_path, "dyn.pth"))
-        torch.save(self.pred_net.state_dict(), os.path.join(full_path, "pred.pth"))
+        torch.save(self.repr_net.state_dict(), os.path.join(model_path, "repr.pth"))
+        torch.save(self.dyn_net.state_dict(), os.path.join(model_path, "dyn.pth"))
+        torch.save(self.pred_net.state_dict(), os.path.join(model_path, "pred.pth"))
 
         # Write hyperparameters and final loss into a text file
-        txt_path = os.path.join(full_path, "training_info.txt")
+        info_path = os.path.join(BASE_PATH, "info/" + folder_name)
+        os.makedirs(info_path, exist_ok=True)
+        txt_path = os.path.join(info_path, "training_info.txt")
         with open(txt_path, "w") as f:
             f.write("MuZero Training Info\n")
             f.write(f"Environment: {env_config.type}\n")
@@ -248,9 +250,9 @@ class NeuralNetworkManager:
             f.write(f"{self.dyn_net}\n\n")
             f.write(f"{self.pred_net}\n\n")
 
-        print(f"Saved model to: {full_path}/")
+        print(f"Saved model to: {model_path}/")
 
-        self.plot_loss(full_path)
+        self.plot_loss(info_path)
 
     def load_model(self, base_path: str, counter: int) -> None:
         """
@@ -267,7 +269,7 @@ class NeuralNetworkManager:
             match = FOLDER_REGEX.match(folder)
             if match:
                 c_val = int(match.group(1))
-                dt_str = match.group(2)  # e.g. '20250324_134501'
+                dt_str = match.group(2)
                 if c_val == counter:
                     matching.append((folder, dt_str))
 
@@ -293,13 +295,20 @@ class NeuralNetworkManager:
 
     def _get_next_model_counter(self, base_path: str) -> int:
         """
-        Look for all subfolders in `base_path` matching the pattern <counter>_<datetime>,
+        Look for all subfolders in `base_path/models` and `base_path/info` matching the pattern <counter>_<datetime>,
         find the maximum <counter> so far, and return max+1. If none exist, return 0.
         """
-        if not os.path.isdir(base_path):
-            os.makedirs(base_path)
+        models_path = os.path.join(base_path, "models")
+        info_path = os.path.join(base_path, "info")
 
-        subfolders = os.listdir(base_path)
+        # Ensure both directories exist
+        if not os.path.isdir(models_path):
+            os.makedirs(models_path)
+        if not os.path.isdir(info_path):
+            os.makedirs(info_path)
+
+        # Collect subfolders from both paths
+        subfolders = os.listdir(models_path) + os.listdir(info_path)
         max_counter = -1
         for folder in subfolders:
             match = FOLDER_REGEX.match(folder)
