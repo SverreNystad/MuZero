@@ -124,10 +124,11 @@ def train_model() -> None:
         config=config.networks.prediction,
     )
 
-    nnm = NeuralNetworkManager(config, repr_net, dyn_net, pred_net)
-    
+    nnm = NeuralNetworkManager(config.training, repr_net, dyn_net, pred_net)
+
     # train using episodes
     nnm.train(episodes)
+
 
 if __name__ == "__main__":
     # _profile_code(generate_training_data)
