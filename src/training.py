@@ -254,14 +254,14 @@ class NeuralNetworkManager:
 
         self.plot_loss(info_path)
 
-    def load_model(self, base_path: str, counter: int) -> None:
+    def load_model(self, counter: int) -> None:
         """
         Load the neural networks from the *newest* subfolder matching <counter>_<datetime>.
 
         Args:
-            base_path (str): The base path where models are saved (e.g. "models").
             counter (int): Numerical counter used in the folder name (e.g. 7).
         """
+        base_path = os.path.join(BASE_PATH, "models")
         subfolders = os.listdir(base_path)
         # Filter out those matching <counter>_<datetime>
         matching = []
