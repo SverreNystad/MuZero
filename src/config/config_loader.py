@@ -102,6 +102,7 @@ class TrainingConfig(BaseModel):
     betas: tuple[float, float]
     roll_ahead: int
     look_back: int
+    mini_batch_size: int
 
 
 class Configuration(BaseModel):

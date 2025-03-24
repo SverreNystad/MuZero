@@ -5,8 +5,10 @@ from src.nerual_networks.neural_network import (
     DynamicsNetwork,
     PredictionNetwork,
 )
+from src.training import NeuralNetworkManager
 from src.training_data_generator import (
     TrainingDataGenerator,
+    load_all_training_data,
     save_training_data,
 )
 
@@ -85,5 +87,48 @@ def _profile_code(func: Callable, *args, **kwargs) -> None:
     stats.dump_stats("profile.prof")
 
 
+def train_model() -> None:
+    """
+    Train the model using the training data.
+    """
+    # load config
+    config = load_config("config.yaml")
+
+    # load episodes
+    episodes = load_all_training_data()
+
+    # load networks
+    # Create the environment using the factory method.
+    env = create_environment(config.environment)
+
+    num_actions = len(env.get_action_space())
+    latent_shape = config.networks.latent_shape
+    # Load the representation network.
+    repr_net = RepresentationNetwork(
+        observation_space=env.get_observation_space(),
+        latent_shape=latent_shape,
+        config=config.networks.representation,
+    )
+
+    # Load the dynamics network.
+    dyn_net = DynamicsNetwork(
+        latent_shape=latent_shape,
+        num_actions=num_actions,
+        config=config.networks.dynamics,
+    )
+
+    # Load the prediction network.
+    pred_net = PredictionNetwork(
+        latent_shape=latent_shape,
+        num_actions=num_actions,
+        config=config.networks.prediction,
+    )
+
+    nnm = NeuralNetworkManager(config, repr_net, dyn_net, pred_net)
+    
+    # train using episodes
+    nnm.train(episodes)
+
 if __name__ == "__main__":
-    _profile_code(generate_training_data)
+    # _profile_code(generate_training_data)
+    _profile_code(train_model)

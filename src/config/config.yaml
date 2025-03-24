@@ -25,6 +25,7 @@ training:
   betas: [0.9, 0.999]
   look_back: 4                        # number of past states to include in the input sequence
   roll_ahead: 1
+  mini_batch_size: 256
 
 # Neural network configurations 
 networks:

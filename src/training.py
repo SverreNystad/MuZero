@@ -2,6 +2,7 @@ import random
 import torch
 import torch.nn.functional as F
 from torch import Tensor
+from tqdm import trange
 from src.config.config_loader import TrainingConfig
 from src.environment import Environment
 from src.nerual_networks.neural_network import (
@@ -27,6 +28,7 @@ class NeuralNetworkManager:
         """
         self.lookback = config.look_back
         self.roll_ahead = config.roll_ahead
+        self.mbs = config.mini_batch_size
         self.repr_net = repr_net
         self.dyn_net = dyn_net
         self.pred_net = pred_net
@@ -39,7 +41,7 @@ class NeuralNetworkManager:
             betas=config.betas,
         )
 
-    def train(self, episode_history: list[Episode], mbs: int):
+    def train(self, episode_history: list[Episode]):
         """
         Train MuZero's neural networks using Backpropagation Through Time (BPTT).
 
@@ -47,7 +49,7 @@ class NeuralNetworkManager:
             episode_history (list[Episode]): A list of episodes.
             mbs (int): The mini-batch size (number of BPTT updates).
         """
-        for _ in range(mbs):
+        for _ in trange(self.mbs):
             # Randomly pick an episode
             b = random.randrange(len(episode_history))
             episode = episode_history[b]
