@@ -127,7 +127,8 @@ def train_model() -> None:
     nnm = NeuralNetworkManager(config.training, repr_net, dyn_net, pred_net)
 
     # train using episodes
-    nnm.train(episodes)
+    final_loss = nnm.train(episodes)
+    nnm.save_models(final_loss, config.environment)
 
 
 if __name__ == "__main__":
