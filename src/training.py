@@ -96,7 +96,7 @@ class NeuralNetworkManager:
         last_real_state = Sb_k[-1]
         if not isinstance(last_real_state, torch.Tensor):
             last_real_state = torch.tensor(last_real_state, dtype=torch.float32)
-        latent_state = self.repr_net(last_real_state.unsqueeze(0))
+        latent_state = self.repr_net(last_real_state)
 
         total_loss = torch.zeros(1, dtype=torch.float32)
 

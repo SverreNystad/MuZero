@@ -100,7 +100,7 @@ networks:
       - out_features: 1
         activation: "relu"
     policy_net:
-      - out_features: 3
+      - out_features: 5
         activation: "relu"
       
       
