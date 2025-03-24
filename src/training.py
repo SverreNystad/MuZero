@@ -67,13 +67,13 @@ class NeuralNetworkManager:
             Ab_k = [
                 episode.chunks[i].best_action for i in range(k, k + self.roll_ahead)
             ]
-            Πb_k = [episode.chunks[i].policy for i in range(k, k + self.roll_ahead + 1)]
+            Pb_k = [episode.chunks[i].policy for i in range(k, k + self.roll_ahead + 1)]
             Vb_k = [episode.chunks[i].value for i in range(k, k + self.roll_ahead + 1)]
             Rb_k = [episode.chunks[i + 1].reward for i in range(k, k + self.roll_ahead)]
 
             # Optimize
             self.optimizer.zero_grad()
-            total_loss = self.bptt(Sb_k, Ab_k, (Πb_k, Vb_k, Rb_k))
+            total_loss = self.bptt(Sb_k, Ab_k, (Pb_k, Vb_k, Rb_k))
             total_loss.backward()
             self.optimizer.step()
 
@@ -91,7 +91,7 @@ class NeuralNetworkManager:
         Returns:
             torch.Tensor: The total (summed) loss across unrolled steps.
         """
-        Πb_k, Vb_k, Rb_k = PVR
+        Pb_k, Vb_k, Rb_k = PVR
 
         last_real_state = Sb_k[-1]
         if not isinstance(last_real_state, torch.Tensor):
@@ -106,7 +106,7 @@ class NeuralNetworkManager:
             pred_policy, pred_value = self.pred_net(latent_state)
 
             # Convert the single-step targets to tensors if needed
-            target_policy = Πb_k[i]
+            target_policy = Pb_k[i]
             target_value = Vb_k[i]
             target_reward = Rb_k[i]
 
