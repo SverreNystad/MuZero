@@ -209,7 +209,12 @@ class NeuralNetworkManager:
         """
         return -torch.sum(target_policy * torch.log(pred_policy))
 
-    def save_models(self, final_loss_val: float = 0.0, env_config: EnvironmentConfig = None) -> None:
+    def save_models(
+        self,
+        final_loss_val: float = 0.0,
+        env_config: EnvironmentConfig = None,
+        show_plot: bool = True,
+    ) -> tuple[RepresentationNetwork, DynamicsNetwork, PredictionNetwork]:
         """
         Save the neural networks to disk in /models/<counter>_<datetime>/.
         Also create a .txt file with hyperparameters and the final loss.
@@ -248,7 +253,8 @@ class NeuralNetworkManager:
 
         print(f"Saved model to: {model_path}/")
 
-        self.plot_loss(info_path)
+        self.plot_loss(info_path, show_plot)
+        return self.repr_net, self.dyn_net, self.pred_net
 
     def load_model(self, counter: int) -> None:
         """
@@ -312,7 +318,7 @@ class NeuralNetworkManager:
 
         return max_counter + 1
 
-    def plot_loss(self, path: str) -> None:
+    def plot_loss(self, path: str, shall_show: bool) -> None:
         """Plot the loss history during training."""
         img_path = os.path.join(path, "training_loss.png")
         plt.plot(self.loss_history)
@@ -320,4 +326,5 @@ class NeuralNetworkManager:
         plt.ylabel("Loss")
         plt.title("Training Loss")
         plt.savefig(img_path)
-        plt.show()
+        if shall_show:
+            plt.show()
