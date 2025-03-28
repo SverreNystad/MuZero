@@ -209,3 +209,15 @@ def _validate_data(data: list[Episode]) -> None:
     for episode in data:
         if not isinstance(episode, Episode):
             raise ValueError(f"Expected an Episode object, but got {type(episode)}")
+
+
+def delete_all_training_data() -> None:
+    """
+    Delete all training data files in the data folder.
+    """
+    all_files = os.listdir(DATA_FOLDER)
+    print(f"Deleting {len(all_files)} training data files...")
+    for file in all_files:
+        file_path = os.path.join(DATA_FOLDER, file)
+        os.remove(file_path)
+    print("All training data files deleted.")
