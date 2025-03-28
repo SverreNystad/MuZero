@@ -102,4 +102,3 @@ PredictionNetwork(
     (3): Softmax(dim=1)
   )
 )
-

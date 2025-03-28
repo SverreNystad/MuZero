@@ -1,19 +1,19 @@
-import time
-import torch
 import math
+import time
+
+import torch
 
 from src.neural_networks.neural_network import DynamicsNetwork
+from src.search.expansion import expand_node
 from src.search.nodes import Node
 from src.search.strategies import (
+    BackpropagationStrategy,
     SelectionStrategy,
     SimulationStrategy,
-    BackpropagationStrategy,
 )
-from src.search.expansion import expand_node
 
 
 class MCTS:
-
     def __init__(
         self,
         selection: SelectionStrategy,
@@ -47,9 +47,7 @@ class MCTS:
                 itr += 1
 
         utility = root.value_sum / root.visit_count
-        tree_policy = _soft_max(
-            [child_node.value_sum for child_node in root.children.values()]
-        )
+        tree_policy = _soft_max([child_node.value_sum for child_node in root.children.values()])
 
         return tree_policy, utility
 

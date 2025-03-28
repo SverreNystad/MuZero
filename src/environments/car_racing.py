@@ -1,9 +1,10 @@
 from typing import Any, Literal
-from torch import Tensor
+
+import torch
 from gym.envs.box2d.car_racing import CarRacing as CarRacingGym
 from gym.spaces.discrete import Discrete
 from pydantic import BaseModel
-import torch
+from torch import Tensor
 
 from src.environment import Environment
 

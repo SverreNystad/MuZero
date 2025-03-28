@@ -1,6 +1,6 @@
 import pytest
+
 from src.config.config_loader import load_config
-from src.environment import Environment
 from src.environments.car_racing import CarRacing, CarRacingConfig
 from src.environments.connect_four import ConnectFour, ConnectFourConfig
 from src.environments.factory import create_environment

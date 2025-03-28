@@ -1,8 +1,9 @@
-from src.search.strategies import SelectionStrategy
-from src.search.nodes import Node
-from src.search.selection import UCT, PUCT
 import pytest
 import torch
+
+from src.search.nodes import Node
+from src.search.selection import PUCT, UCT
+from src.search.strategies import SelectionStrategy
 
 
 @pytest.mark.parametrize(

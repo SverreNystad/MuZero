@@ -1,6 +1,6 @@
 # MuZero
 
-<details> 
+<details>
 <summary><b>📋 Table of contents </b></summary>
 
 - [MuZero](#muzero)

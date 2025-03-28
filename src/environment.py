@@ -1,26 +1,6 @@
+from typing import Any, Protocol
+
 from torch import Tensor
-from typing import Protocol, Any
-from torch import Tensor
-
-"""
-The main Gymnasium class for implementing Reinforcement Learning Agents environments.
-
-The class encapsulates an environment with arbitrary behind-the-scenes dynamics through the step() and reset() functions. An environment can be partially or fully observed by single agents. For multi-agent environments, see PettingZoo.
-
-The main API methods that users of this class need to know are:
-
-    step() - Updates an environment with actions returning the next agent observation, the reward for taking that actions, if the environment has terminated or truncated due to the latest action and information from the environment about the step, i.e. metrics, debug info.
-    reset() - Resets the environment to an initial state, required before calling step. Returns the first agent observation for an episode and information, i.e. metrics, debug info.
-    render() - Renders the environments to help visualise what the agent see, examples modes are “human”, “rgb_array”, “ansi” for text.
-    close() - Closes the environment, important when external software is used, i.e. pygame for rendering, databases
-
-Environments have additional attributes for users to understand the implementation:
-    action_space - The Space object corresponding to valid actions, all valid actions should be contained within the space.
-    observation_space - The Space object corresponding to valid observations, all valid observations should be contained within the space.
-    spec - An environment spec that contains the information used to initialize the environment from gymnasium.make()
-    metadata - The metadata of the environment, e.g. {“render_modes”: [“rgb_array”, “human”], “render_fps”: 30}. For Jax or Torch, this can be indicated to users with “jax”=True or “torch”=True.
-    np_random - The random number generator for the environment. This is automatically assigned during super().reset(seed=seed) and when assessing np_random.
-"""
 
 
 class Environment(Protocol):

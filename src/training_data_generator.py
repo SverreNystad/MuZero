@@ -1,17 +1,18 @@
 import os
 import pickle
 import time
-from typing import cast
-from tqdm import trange
-from torch import Tensor
 from dataclasses import dataclass
+from typing import cast
+
+from torch import Tensor
+from tqdm import trange
 
 from src.config.config_loader import TrainingDataGeneratorConfig
 from src.environment import Environment
 from src.neural_networks.neural_network import (
-    RepresentationNetwork,
-    PredictionNetwork,
     DynamicsNetwork,
+    PredictionNetwork,
+    RepresentationNetwork,
 )
 from src.search.factory import create_mcts
 from src.search.mcts import MCTS

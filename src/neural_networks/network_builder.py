@@ -1,17 +1,15 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
-from typing import Optional, Tuple, Union
 from src.config.config_loader import (
     ConvLayerConfig,
+    DenseLayerConfig,
     PoolLayerConfig,
     ResBlockConfig,
-    DenseLayerConfig,
 )
 
 
-def get_activation(activation_name: Optional[str]) -> nn.Module:
+def get_activation(activation_name: str | None) -> nn.Module:
     """
     Returns the activation module corresponding to the given name.
     If activation_name is None or "none", returns an identity.
@@ -62,13 +60,9 @@ class PoolLayer(nn.Module):
         super().__init__()
         match config.pool_type.lower():
             case "max":
-                self.pool = nn.MaxPool2d(
-                    kernel_size=config.kernel_size, stride=config.stride
-                )
+                self.pool = nn.MaxPool2d(kernel_size=config.kernel_size, stride=config.stride)
             case "avg":
-                self.pool = nn.AvgPool2d(
-                    kernel_size=config.kernel_size, stride=config.stride
-                )
+                self.pool = nn.AvgPool2d(kernel_size=config.kernel_size, stride=config.stride)
             case _:
                 raise ValueError(f"Unknown pool_type: {config.pool_type}")
 
@@ -158,9 +152,9 @@ class ResBlock(nn.Module):
 
 
 def build_downsample_layer(
-    layer_config: Union[ConvLayerConfig, PoolLayerConfig, ResBlockConfig],
+    layer_config: ConvLayerConfig | PoolLayerConfig | ResBlockConfig,
     in_channels: int,
-) -> Tuple[nn.Module, int]:
+) -> tuple[nn.Module, int]:
     """
     Given a layer config (conv, pool, or res_block) and the current in_channels,
     return:
@@ -186,9 +180,7 @@ def build_downsample_layer(
         raise ValueError(f"Unknown layer type: {layer_config.type}")
 
 
-def build_mlp(
-    layers_config: list[DenseLayerConfig], input_dim: int
-) -> Tuple[nn.Sequential, int]:
+def build_mlp(layers_config: list[DenseLayerConfig], input_dim: int) -> tuple[nn.Sequential, int]:
     """
     Given a list of DenseLayerConfig and an initial input dimension,
     build an MLP (nn.Sequential).

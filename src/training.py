@@ -1,12 +1,14 @@
-import os
-import re
 import datetime
+import os
 import random
+import re
+
 import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torch import Tensor
 from tqdm import trange
+
 from src.config.config_loader import EnvironmentConfig, TrainingConfig
 from src.environment import Environment
 from src.neural_networks.neural_network import (
@@ -18,6 +20,7 @@ from src.training_data_generator import Episode
 
 FOLDER_REGEX = re.compile(r"^(\d+)_(\d{8}_\d{6})$")
 BASE_PATH = "training_runs"
+
 
 class NeuralNetworkManager:
     def __init__(
@@ -41,11 +44,8 @@ class NeuralNetworkManager:
         self.pred_net = pred_net
         self.loss_history = []
 
-
         self.optimizer = torch.optim.Adam(
-            list(self.repr_net.parameters())
-            + list(self.dyn_net.parameters())
-            + list(self.pred_net.parameters()),
+            list(self.repr_net.parameters()) + list(self.dyn_net.parameters()) + list(self.pred_net.parameters()),
             lr=config.learning_rate,
             betas=config.betas,
         )
@@ -90,9 +90,7 @@ class NeuralNetworkManager:
 
         return final_loss_val
 
-    def bptt(
-        self, Sb_k: list[Environment], Ab_k: list[Tensor], PVR: tuple
-    ) -> torch.Tensor:
+    def bptt(self, Sb_k: list[Environment], Ab_k: list[Tensor], PVR: tuple) -> torch.Tensor:
         """
         Perform Backpropagation Through Time (BPTT) on MuZero's three networks.
 
@@ -154,9 +152,7 @@ class NeuralNetworkManager:
 
         # No policy or reward for the final step, only a value
         final_PVR = ([], [final_target_value], [])
-        final_step_loss = self.loss(
-            final_PVR, reward=None, value=final_pred_value, policy=None
-        )
+        final_step_loss = self.loss(final_PVR, reward=None, value=final_pred_value, policy=None)
         total_loss += final_step_loss
 
         return total_loss
@@ -245,7 +241,7 @@ class NeuralNetworkManager:
             f.write(f"learning_rate: {self.config.learning_rate}\n")
             f.write(f"betas: {self.config.betas}\n\n")
             f.write(f"Final Loss: {final_loss_val}\n\n")
-            f.write(f"Network configuration:\n\n")
+            f.write("Network configuration:\n\n")
             f.write(f"{self.repr_net}\n\n")
             f.write(f"{self.dyn_net}\n\n")
             f.write(f"{self.pred_net}\n\n")
@@ -274,9 +270,7 @@ class NeuralNetworkManager:
                     matching.append((folder, dt_str))
 
         if not matching:
-            raise FileNotFoundError(
-                f"No folder found in '{base_path}' with counter = {counter}"
-            )
+            raise FileNotFoundError(f"No folder found in '{base_path}' with counter = {counter}")
 
         # Sort by dt_str descending so the newest is first
         matching.sort(key=lambda x: x[1], reverse=True)

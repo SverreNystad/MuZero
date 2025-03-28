@@ -1,13 +1,12 @@
-from enum import StrEnum
 import os
-from typing import Annotated, Literal, Optional, Union
+from enum import StrEnum
+from typing import Annotated, Literal, Union
 
-from pydantic import BaseModel, Field
 import yaml
+from pydantic import BaseModel, Field
 
 from src.environments.car_racing import CarRacingConfig
 from src.environments.connect_four import ConnectFourConfig
-
 
 CONFIG_PATH = os.path.dirname(__file__)
 
@@ -34,7 +33,7 @@ class ConvLayerConfig(BaseModel):
     kernel_size: int
     stride: int
     padding: int
-    activation: Optional[str] = "relu"  # e.g. "relu", "tanh", "sigmoid", "none"
+    activation: str | None = "relu"  # e.g. "relu", "tanh", "sigmoid", "none"
 
 
 class PoolLayerConfig(BaseModel):
@@ -56,13 +55,11 @@ class ResBlockConfig(BaseModel):
 
 
 class DenseLayerConfig(BaseModel):
-    out_features: Optional[int] = None  # for conv or linear layers
-    activation: Optional[str] = "relu"  # e.g. "relu", "tanh", "sigmoid", "none"
+    out_features: int | None = None  # for conv or linear layers
+    activation: str | None = "relu"  # e.g. "relu", "tanh", "sigmoid", "none"
 
 
-DownsampleLayerConfig = Annotated[
-    Union[ConvLayerConfig, PoolLayerConfig, ResBlockConfig], Field(discriminator="type")
-]
+DownsampleLayerConfig = Annotated[Union[ConvLayerConfig, PoolLayerConfig, ResBlockConfig], Field(discriminator="type")]
 
 
 class RepresentationNetworkConfig(BaseModel):
@@ -117,6 +114,6 @@ def load_config(filename: str) -> Configuration:
     Load a configuration file from the config directory.
     """
     path = os.path.join(CONFIG_PATH, filename)
-    with open(path, "r") as file:
+    with open(path) as file:
         raw_config = yaml.safe_load(file)
     return Configuration(**raw_config)

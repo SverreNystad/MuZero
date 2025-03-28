@@ -4,6 +4,7 @@ To read more about the strategy design pattern, see https://refactoring.guru/des
 """
 
 from typing import Protocol
+
 from src.search.nodes import Node
 
 

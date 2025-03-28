@@ -27,9 +27,9 @@ training:
   roll_ahead: 1
   mini_batch_size: 256
 
-# Neural network configurations 
+# Neural network configurations
 networks:
-  latent_shape: [6, 6, 3] 
+  latent_shape: [6, 6, 3]
   representation:
     downsample:
       - type: "conv_layer" # in 96x96x3 out 48x48x3
@@ -79,7 +79,7 @@ networks:
         kernel_size: 3
         stride: 1
         padding: 1
-        activation: "relu" 
+        activation: "relu"
         pool_stride: 1
         pool_kernel_size: 1
     reward_net:
@@ -95,12 +95,10 @@ networks:
         activation: "relu"
         pool_stride: 1
         pool_kernel_size: 1
-        
+
     value_net:
       - out_features: 1
         activation: "relu"
     policy_net:
       - out_features: 5
         activation: "relu"
-      
-      

@@ -1,6 +1,9 @@
+import random
+
+import torch
+
 from src.neural_networks.neural_network import DynamicsNetwork
 from src.search.nodes import Node
-import random, torch
 
 
 def expand_node(
@@ -28,8 +31,6 @@ def expand_node(
     return random.choice(list(node.children.values()))
 
 
-def _transform_latent_state(
-    batch_size: int, latent_state: torch.Tensor
-) -> torch.Tensor:
+def _transform_latent_state(batch_size: int, latent_state: torch.Tensor) -> torch.Tensor:
     """Transforms the latent state into the correct shape for the batch size"""
     return latent_state.repeat(batch_size, 1, 1, 1)

@@ -1,7 +1,8 @@
 from math import log, sqrt
+from typing import cast
+
 from src.search.nodes import Node
 from src.search.strategies import SelectionStrategy
-from typing import cast
 
 
 class UCT(SelectionStrategy):
@@ -47,9 +48,7 @@ class PUCT(SelectionStrategy):
 
         prior_score = pb_c * parent.value_sum
         if node.visit_count > 0:
-            value_score = (
-                node.reward + self.discount * node.value_sum / node.visit_count
-            )
+            value_score = node.reward + self.discount * node.value_sum / node.visit_count
         else:
             value_score = 0
         return prior_score + value_score

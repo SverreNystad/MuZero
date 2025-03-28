@@ -11,9 +11,9 @@ import torch.nn.functional as F
 
 from src.config.config_loader import (
     DenseLayerConfig,
-    RepresentationNetworkConfig,
     DynamicsNetworkConfig,
     PredictionNetworkConfig,
+    RepresentationNetworkConfig,
     load_config,
 )
 from src.neural_networks.network_builder import (
@@ -36,9 +36,7 @@ class RepresentationNetwork(nn.Module):
         self,
         observation_space: tuple[int, int, int],
         latent_shape: tuple[int, int, int],
-        config: RepresentationNetworkConfig = load_config(
-            "config.yaml"
-        ).networks.representation,
+        config: RepresentationNetworkConfig = load_config("config.yaml").networks.representation,
     ):
         """
         Args:
@@ -147,9 +145,7 @@ class DynamicsNetwork(nn.Module):
         #    The input dimension for the reward MLP is c * h * w (flattened next-latent).
         self.reward_mlp, _ = build_mlp(config.reward_net, input_dim=c * h * w)
 
-    def forward(
-        self, latent_state: torch.Tensor, action: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, latent_state: torch.Tensor, action: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
             latent_state: [B, C, H, W]
@@ -226,9 +222,7 @@ class PredictionNetwork(nn.Module):
 
         # 3) Build the policy MLP from config.policy_net
         policy_mlp_architecture = config.policy_net
-        policy_mlp_architecture.append(
-            DenseLayerConfig(out_features=num_actions, activation="softmax")
-        )
+        policy_mlp_architecture.append(DenseLayerConfig(out_features=num_actions, activation="softmax"))
         self.policy_mlp, _ = build_mlp(policy_mlp_architecture, input_dim=c * h * w)
 
     def forward(self, latent_state: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:

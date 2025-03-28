@@ -1,16 +1,16 @@
-import torch
-import pytest
 from dataclasses import dataclass
+
+import pytest
+import torch
 
 from src.config.config_loader import TrainingConfig
 from src.neural_networks.neural_network import (
-    RepresentationNetwork,
     DynamicsNetwork,
     PredictionNetwork,
+    RepresentationNetwork,
 )
-from src.training_data_generator import Chunk, Episode
 from src.training import NeuralNetworkManager
-
+from src.training_data_generator import Chunk, Episode
 from tests.nerual_networks.test_networks import (
     tiny_dyn_net,
     tiny_pred_net,
@@ -120,11 +120,7 @@ def test_single_update(minimal_config, minimal_nets):
 
     # Check that at least some gradients were computed.
     for param in manager.repr_net.parameters():
-        assert (
-            param.grad is None
-            or torch.any(param.grad != 0)
-            or (param.grad.isnan().any() == False)
-        )
+        assert param.grad is None or torch.any(param.grad != 0) or (param.grad.isnan().any() == False)
 
 
 def test_multiple_updates(minimal_config, minimal_nets):
@@ -205,9 +201,7 @@ def test_no_valid_rollout(minimal_config, minimal_nets):
         ),  # For roll_ahead=2, the episode must contain at least 3 states.
     ],
 )
-def test_training_various_configs(
-    look_back, batch_size, roll_ahead, epochs, mbs, minimal_nets
-):
+def test_training_various_configs(look_back, batch_size, roll_ahead, epochs, mbs, minimal_nets):
     """
     Test training with various TrainingConfig parameters.
     Constructs a config from the parameter tuple and ensures the training loop
@@ -234,9 +228,7 @@ def test_training_various_configs(
     chunks = []
     for i in range(num_states):
         chunk = Chunk(
-            state=dummy_state(
-                minimal_nets.input_channels, minimal_nets.observation_space
-            ),
+            state=dummy_state(minimal_nets.input_channels, minimal_nets.observation_space),
             policy=torch.tensor([0.8, 0.2]),
             reward=0.0 if i == 0 else 1.0,
             value=0.1 if i == 0 else 0.2,
@@ -254,9 +246,7 @@ def test_training_various_configs(
 
 
 @pytest.mark.parametrize("num_episodes", [1, 2, 3])
-def test_training_with_varied_episode_counts(
-    minimal_config, minimal_nets, num_episodes
-):
+def test_training_with_varied_episode_counts(minimal_config, minimal_nets, num_episodes):
     """
     Test training when varying the number of episodes in the history.
     This ensures the training loop can handle different amounts of data.
@@ -271,18 +261,14 @@ def test_training_with_varied_episode_counts(
     episode_history = []
     for _ in range(num_episodes):
         s0 = Chunk(
-            state=dummy_state(
-                minimal_nets.input_channels, minimal_nets.observation_space
-            ),
+            state=dummy_state(minimal_nets.input_channels, minimal_nets.observation_space),
             policy=torch.tensor([0.8, 0.2]),
             reward=0.0,
             value=0.1,
             best_action=0,
         )
         s1 = Chunk(
-            state=dummy_state(
-                minimal_nets.input_channels, minimal_nets.observation_space
-            ),
+            state=dummy_state(minimal_nets.input_channels, minimal_nets.observation_space),
             policy=torch.tensor([0.6, 0.4]),
             reward=1.0,
             value=0.2,

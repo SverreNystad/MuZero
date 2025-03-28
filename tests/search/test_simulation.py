@@ -1,8 +1,7 @@
-from src.neural_networks.neural_network import DynamicsNetwork, PredictionNetwork
-from src.search.nodes import Node
-from src.search.simulation import MuZeroSimulation
 import torch
 
+from src.search.nodes import Node
+from src.search.simulation import MuZeroSimulation
 from tests.nerual_networks.test_networks import tiny_dyn_net, tiny_pred_net
 
 

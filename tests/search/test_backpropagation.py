@@ -1,8 +1,9 @@
-from src.search.strategies import BackpropagationStrategy
-from src.search.nodes import Node
-from src.search.backpropagation import Backpropagation
 import pytest
 import torch
+
+from src.search.backpropagation import Backpropagation
+from src.search.nodes import Node
+from src.search.strategies import BackpropagationStrategy
 
 
 @pytest.mark.parametrize(

@@ -1,25 +1,19 @@
 import os
+
 import pytest
 import torch
 
 from src.config.config_loader import TrainingDataGeneratorConfig
 from src.environments.car_racing import CarRacingConfig
 from src.environments.factory import create_environment
-
-from src.neural_networks.neural_network import (
-    RepresentationNetwork,
-    DynamicsNetwork,
-    PredictionNetwork,
-)
-
 from src.search.factory import MCTSConfig
 from src.training_data_generator import (
-    Episode,
     Chunk,
+    Episode,
     TrainingDataGenerator,
-    save_training_data,
-    load_training_data,
     load_all_training_data,
+    load_training_data,
+    save_training_data,
 )
 from tests.nerual_networks.test_networks import (
     tiny_dyn_net,

@@ -100,4 +100,3 @@ PredictionNetwork(
     (1): ReLU(inplace=True)
   )
 )
-

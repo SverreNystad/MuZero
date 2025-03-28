@@ -1,10 +1,9 @@
 import pytest
 
 from src.environment import Environment
-from src.environments.factory import create_environment
 from src.environments.car_racing import CarRacingConfig
 from src.environments.connect_four import ConnectFourConfig
-from src.neural_networks.neural_network import RepresentationNetwork
+from src.environments.factory import create_environment
 from tests.nerual_networks.test_networks import tiny_repr_net
 
 
@@ -19,9 +18,7 @@ def test_environments_states_with_representation_network(env_config: CarRacingCo
     env: Environment = create_environment(env_config)
 
     latent_shape = (2, 1, 1)
-    repr_net = tiny_repr_net(
-        latent_shape=latent_shape, observation_space=env.get_observation_space()
-    )
+    repr_net = tiny_repr_net(latent_shape=latent_shape, observation_space=env.get_observation_space())
 
     # Test the representation network with a random observation
     obs = env.reset()

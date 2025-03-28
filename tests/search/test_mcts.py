@@ -1,15 +1,11 @@
 import time
+
 import pytest
 import torch
 
-from src.environments.connect_four import ConnectFourConfig
 from src.environments.car_racing import CarRacingConfig
+from src.environments.connect_four import ConnectFourConfig
 from src.environments.factory import create_environment
-from src.neural_networks.neural_network import (
-    RepresentationNetwork,
-    DynamicsNetwork,
-    PredictionNetwork,
-)
 from src.search.factory import MCTSConfig, create_mcts
 from src.search.nodes import Node
 from tests.nerual_networks.test_networks import (
@@ -41,9 +37,7 @@ def test_mcts(env_config):
     num_actions = len(env.get_action_space())
     # Instantiate the real networks.
     latent_shape = (2, 2, 2)
-    repr_net = tiny_repr_net(
-        latent_shape=latent_shape, observation_space=env.get_observation_space()
-    )
+    repr_net = tiny_repr_net(latent_shape=latent_shape, observation_space=env.get_observation_space())
     dyn_net = tiny_dyn_net(latent_shape, num_actions=num_actions)
     pred_net = tiny_pred_net(latent_shape, num_actions=num_actions)
 
@@ -75,9 +69,7 @@ def test_mcts(env_config):
     tree_policy, utility = mcts.run(root)
 
     # Check that the root node was updated.
-    assert (
-        root.visit_count > 0
-    ), "Root node's visit count should be updated after MCTS run."
+    assert root.visit_count > 0, "Root node's visit count should be updated after MCTS run."
 
     assert utility is not None, "Utility should not be None after MCTS run."
     assert tree_policy is not None, "Tree policy should not be None after MCTS run."
@@ -108,9 +100,7 @@ def test_mcts_with_max_iterations(env_config):
     num_actions = len(env.get_action_space())
     # Instantiate the real networks.
     latent_shape = (2, 2, 2)
-    repr_net = tiny_repr_net(
-        latent_shape=latent_shape, observation_space=env.get_observation_space()
-    )
+    repr_net = tiny_repr_net(latent_shape=latent_shape, observation_space=env.get_observation_space())
     dyn_net = tiny_dyn_net(latent_shape, num_actions=num_actions)
     pred_net = tiny_pred_net(latent_shape, num_actions=num_actions)
 
@@ -137,9 +127,7 @@ def test_mcts_with_max_iterations(env_config):
     tree_policy, utility = mcts.run(root)
 
     # Check that the root's visit_count equals the number of iterations.
-    assert (
-        root.visit_count == max_itr
-    ), f"Expected {max_itr} iterations, got {root.visit_count}"
+    assert root.visit_count == max_itr, f"Expected {max_itr} iterations, got {root.visit_count}"
 
     assert utility is not None, "Utility should not be None after MCTS run."
     assert tree_policy is not None, "Tree policy should not be None after MCTS run."
@@ -169,9 +157,7 @@ def test_mcts_with_max_time(env_config):
     observation = env.reset()
     latent_shape = (2, 2, 2)
     # Instantiate the real networks.
-    repr_net = tiny_repr_net(
-        latent_shape=latent_shape, observation_space=env.get_observation_space()
-    )
+    repr_net = tiny_repr_net(latent_shape=latent_shape, observation_space=env.get_observation_space())
     dyn_net = tiny_dyn_net(latent_shape, num_actions=num_actions)
     pred_net = tiny_pred_net(latent_shape, num_actions=num_actions)
 
@@ -199,13 +185,9 @@ def test_mcts_with_max_time(env_config):
     elapsed = time.time() - start_time
 
     # Verify that the elapsed time is at least max_time.
-    assert (
-        elapsed >= max_time
-    ), f"Expected run to take at least {max_time} seconds, but took {elapsed:.2f} seconds"
+    assert elapsed >= max_time, f"Expected run to take at least {max_time} seconds, but took {elapsed:.2f} seconds"
     # Also ensure that some iterations occurred.
-    assert (
-        root.visit_count > 0
-    ), "MCTS run did not update the root's visit count in time-based mode."
+    assert root.visit_count > 0, "MCTS run did not update the root's visit count in time-based mode."
     assert utility is not None, "Utility should not be None after MCTS run."
     assert tree_policy is not None, "Tree policy should not be None after MCTS run."
     assert isinstance(utility, float), "Utility should be a float."

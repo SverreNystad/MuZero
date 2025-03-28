@@ -11,9 +11,9 @@ from src.config.config_loader import (
     ResBlockConfig,
 )
 from src.neural_networks.neural_network import (
-    RepresentationNetwork,
     DynamicsNetwork,
     PredictionNetwork,
+    RepresentationNetwork,
 )
 
 
@@ -69,8 +69,7 @@ def test_representation_network_forward(batch_size):
 
     # Check output shape: (batch_size, latent_dim)
     assert latent.shape == (batch_size, *latent_shape), (
-        f"RepresentationNetwork output shape {latent.shape} "
-        f"does not match expected {(batch_size, *latent_shape)}"
+        f"RepresentationNetwork output shape {latent.shape} " f"does not match expected {(batch_size, *latent_shape)}"
     )
 
 
@@ -131,12 +130,10 @@ def test_dynamics_network_forward(batch_size, latent_shape, action_space_size):
 
     # Check shapes
     assert next_latent.shape == (batch_size, *latent_shape), (
-        f"DynamicsNetwork next_latent shape {next_latent.shape} "
-        f"does not match expected {(batch_size, *latent_shape)}"
+        f"DynamicsNetwork next_latent shape {next_latent.shape} " f"does not match expected {(batch_size, *latent_shape)}"
     )
     assert reward.shape == (batch_size, 1), (
-        f"DynamicsNetwork reward shape {reward.shape} "
-        f"does not match expected {(batch_size, 1)}"
+        f"DynamicsNetwork reward shape {reward.shape} " f"does not match expected {(batch_size, 1)}"
     )
 
 
@@ -195,6 +192,5 @@ def test_prediction_network_forward(batch_size, latent_shape, action_space_size)
         f"does not match expected {(batch_size, action_space_size)}"
     )
     assert value.shape == (batch_size, 1), (
-        f"PredictionNetwork value shape {value.shape} "
-        f"does not match expected {(batch_size, 1)}"
+        f"PredictionNetwork value shape {value.shape} " f"does not match expected {(batch_size, 1)}"
     )

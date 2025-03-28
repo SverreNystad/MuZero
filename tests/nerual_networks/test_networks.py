@@ -1,22 +1,21 @@
 import random
+
 import pytest
 import torch
-import torch.nn as nn
 
 from src.config.config_loader import (
     ConvLayerConfig,
-    RepresentationNetworkConfig,
+    DenseLayerConfig,
     DynamicsNetworkConfig,
     PredictionNetworkConfig,
-    DenseLayerConfig,
+    RepresentationNetworkConfig,
     ResBlockConfig,
 )
 from src.neural_networks.neural_network import (
-    RepresentationNetwork,
     DynamicsNetwork,
     PredictionNetwork,
+    RepresentationNetwork,
 )
-from src.neural_networks.network_builder import ResBlock, get_activation, build_mlp
 
 
 def tiny_representation_config() -> RepresentationNetworkConfig:
@@ -140,15 +139,11 @@ def test_minimal_forward_pass(observation_space, latent_shape, num_actions):
     Test that the forward pass of the minimal networks runs without errors.
     """
     obs = torch.ones((1, *observation_space))
-    repr_net = tiny_repr_net(
-        latent_shape=latent_shape, observation_space=observation_space
-    )
+    repr_net = tiny_repr_net(latent_shape=latent_shape, observation_space=observation_space)
     dyn_net = tiny_dyn_net(latent_shape, num_actions=num_actions)
     pred_net = tiny_pred_net(latent_shape, num_actions=num_actions)
     latent = repr_net(obs)
-    next_latent, reward = dyn_net(
-        latent, torch.tensor([random.randint(0, num_actions)])
-    )
+    next_latent, reward = dyn_net(latent, torch.tensor([random.randint(0, num_actions)]))
     policy_logits, value = pred_net(latent)
 
     assert latent.shape == (1, *latent_shape)

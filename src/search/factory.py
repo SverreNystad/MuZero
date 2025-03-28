@@ -1,12 +1,12 @@
 import torch
 
-from src.search.mcts import MCTS
-from src.search.selection import UCT, PUCT
-from src.search.backpropagation import Backpropagation
+from src.config.config_loader import MCTSConfig, SelectionStrategyType
 from src.neural_networks.neural_network import DynamicsNetwork, PredictionNetwork
+from src.search.backpropagation import Backpropagation
+from src.search.mcts import MCTS
+from src.search.selection import PUCT, UCT
 from src.search.simulation import MuZeroSimulation
 from src.search.strategies import SelectionStrategy
-from src.config.config_loader import MCTSConfig, SelectionStrategyType
 
 
 def create_mcts(
@@ -36,9 +36,7 @@ def create_mcts(
             selection_strategy = PUCT()
 
     # Create simulation and backpropagation strategies.
-    simulation_strategy = MuZeroSimulation(
-        dynamics_network, prediction_network, config.depth
-    )
+    simulation_strategy = MuZeroSimulation(dynamics_network, prediction_network, config.depth)
     backpropagation_strategy = Backpropagation(config.discount_factor)
 
     # Instantiate the MCTS object with the given strategies.

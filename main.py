@@ -1,9 +1,11 @@
-from typing import Callable
+from collections.abc import Callable
+
+from src.config.config_loader import load_config
 from src.environments.factory import create_environment
 from src.neural_networks.neural_network import (
-    RepresentationNetwork,
     DynamicsNetwork,
     PredictionNetwork,
+    RepresentationNetwork,
 )
 from src.training import NeuralNetworkManager
 from src.training_data_generator import (
@@ -11,8 +13,6 @@ from src.training_data_generator import (
     load_all_training_data,
     save_training_data,
 )
-
-from src.config.config_loader import load_config
 
 
 def generate_training_data() -> None:

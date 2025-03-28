@@ -1,9 +1,11 @@
 from typing import Any, Literal
-from torch import from_numpy, Tensor
-from pydantic import BaseModel
-from pettingzoo.classic import connect_four_v3
-from src.environment import Environment
+
 from gymnasium.spaces import Box
+from pettingzoo.classic import connect_four_v3
+from pydantic import BaseModel
+from torch import Tensor, from_numpy
+
+from src.environment import Environment
 
 
 class ConnectFourConfig(BaseModel):
