@@ -125,7 +125,7 @@ def train_model(
 
     # train using episodes
     final_loss = nnm.train(episodes)
-    return nnm.save_models(final_loss, config.environment)
+    return nnm.save_models(final_loss, config.environment, False)
 
 
 def generate_train_model_loop(n: int, config_name: str = "config.yaml") -> None:
