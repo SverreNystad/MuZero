@@ -7,11 +7,14 @@ from src.neural_networks.neural_network import (
 )
 
 
-def model_simulation(env: Environment, repr_net: RepresentationNetwork, pred_net: PredictionNetwork, inference_simulation_depth: int) -> None:
+def model_simulation(env: Environment, repr_net: RepresentationNetwork, pred_net: PredictionNetwork, inference_simulation_depth: int, human_mode: bool = True) -> None:
     state = env.get_state()
+    running_reward = 0.0
     for i in range(inference_simulation_depth):
         # Get the current state of the environment.
-        env.render()
+        if human_mode:
+            env.render()
+
         # Encode the state using the representation network.
         latent_state = repr_net(state)  # add batch dimension
 
@@ -25,9 +28,12 @@ def model_simulation(env: Environment, repr_net: RepresentationNetwork, pred_net
         
         # Step the environment using the action.
         state, reward, done = env.step(action)
+        running_reward += reward
         # Print the action, reward, and value.
-        print(f"Step {i}: Action: {action}, Reward: {reward}, Value: {value.item()}")
+        if human_mode:
+            print(f"Step {i}: Action: {action}, Reward: {reward}, Value: {value.item()}")
        
         # Check if the episode is done.
         if done:
-            break
+            return running_reward
+    return running_reward

@@ -60,7 +60,7 @@ class NeuralNetworkManager:
         where <counter> is the next available integer after scanning existing folders.
         """
         final_loss_val = 0.0
-
+        total_loss = torch.zeros(1, dtype=torch.float32)
         for _ in trange(self.mbs):
             # Randomly pick an episode
             b = random.randrange(len(episode_history))
