@@ -22,7 +22,7 @@ class CarRacing(Environment):
         self.env = CarRacingGym(render_mode=config.render_mode, continuous=False)
         obs, _ = self.env.reset(seed=config.seed)  # returns (obs, info)
         # Convert the shape from (height, width, channels) to (channels, height, width)
-        self.last_obs = torch.from_numpy(obs).float().permute(2, 0, 1)
+        self.last_obs = torch.from_numpy(obs).float().permute(2, 0, 1).unsqueeze(0)  # (1, 3, 96, 96)
         self.observation_space = self.env.observation_space
 
     def get_action_space(self) -> tuple[int, ...]:
