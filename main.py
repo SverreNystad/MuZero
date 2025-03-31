@@ -181,7 +181,7 @@ def objective(trial: optuna.Trial) -> float:
     )
 
     # Run the training loop.
-    repr_net, dyn_net, pred_net = generate_train_model_loop(1, config)
+    repr_net, dyn_net, pred_net = generate_train_model_loop(10, config)
     env = create_environment(config.environment)
     running_reward = model_simulation(
         env,

@@ -8,6 +8,7 @@ from src.neural_networks.neural_network import (
 
 
 def model_simulation(env: Environment, repr_net: RepresentationNetwork, pred_net: PredictionNetwork, inference_simulation_depth: int, human_mode: bool = True) -> None:
+    env.reset()
     state = env.get_state()
     running_reward = 0.0
     for i in range(inference_simulation_depth):

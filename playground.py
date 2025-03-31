@@ -23,4 +23,5 @@ observation_space = env.get_observation_space()
 num_actions = len(env.get_action_space())
 repr_net, dyn_net, pred_net = load_networks(model_folder_path)
 
-model_simulation(env, repr_net, pred_net, inference_simulation_depth)
+running_reward = model_simulation(env, repr_net, pred_net, inference_simulation_depth)
+print(f"Running reward: {running_reward}")

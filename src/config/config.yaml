@@ -3,7 +3,7 @@ runtime:
 # Environment Configuration
 environment:
   type: "CarRacing"
-  seed: 42
+  seed: 502
   render_mode: "rgb_array"
 
 # Monte Carlo Tree Search (MCTS) configuration
