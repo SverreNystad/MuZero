@@ -3,6 +3,10 @@ from collections.abc import Callable
 from torch._prims_common import DeviceLikeType
 from tqdm import trange
 import torch
+import wandb
+import os
+from dotenv import load_dotenv
+
 from src.config.config_loader import Configuration, load_config
 from src.environments.factory import create_environment
 from src.neural_networks.neural_network import (
@@ -86,8 +90,6 @@ def train_model(
     """
     Train the model using the training data.
     """
-    # load config
-
     # load episodes
     episodes = load_all_training_data()
 
@@ -136,10 +138,8 @@ def generate_train_model_loop(n: int, config: Configuration) -> None:
         "cuda" if config.runtime.use_cuda and torch.cuda.is_available() else "cpu"
     )
     for _ in trange(n):
-        generate_training_data(repr_net, dyn_net, pred_net, config, device)
-        repr_net, dyn_net, pred_net = train_model(
-            repr_net, dyn_net, pred_net, config, device
-        )
+        generate_training_data(repr_net, dyn_net, pred_net, config)
+        repr_net, dyn_net, pred_net = train_model(repr_net, dyn_net, pred_net, config)
         # As better models create better training data, we can delete the old training data.
         delete_all_training_data()
 
@@ -167,6 +167,16 @@ def _profile_code(func: Callable, *args, **kwargs) -> None:
 
 
 if __name__ == "__main__":
+    config = load_config("config.yaml")
+    load_dotenv()
+    WANDB_API_KEY = os.getenv("WANDB_API_KEY")
+    wandb.login(key=WANDB_API_KEY)
+    wandb.init(
+        project="muzero",
+        # Track hyperparameters and run metadata.
+        config=config,
+    )
+
     # _profile_code(generate_training_data)
     # _profile_code(train_model)
     config_name: str = "config.yaml"

@@ -8,6 +8,7 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 from tqdm import trange
+import wandb
 
 from src.config.config_loader import EnvironmentConfig, TrainingConfig
 from src.environment import Environment
@@ -45,7 +46,9 @@ class NeuralNetworkManager:
         self.loss_history = []
 
         self.optimizer = torch.optim.Adam(
-            list(self.repr_net.parameters()) + list(self.dyn_net.parameters()) + list(self.pred_net.parameters()),
+            list(self.repr_net.parameters())
+            + list(self.dyn_net.parameters())
+            + list(self.pred_net.parameters()),
             lr=config.learning_rate,
             betas=config.betas,
         )
@@ -73,7 +76,9 @@ class NeuralNetworkManager:
 
             # Gather data
             Sb_k = [episode.chunks[i].state for i in range(start_idx, k + 1)]
-            Ab_k = [episode.chunks[i].best_action for i in range(k, k + self.roll_ahead)]
+            Ab_k = [
+                episode.chunks[i].best_action for i in range(k, k + self.roll_ahead)
+            ]
             Pb_k = [episode.chunks[i].policy for i in range(k, k + self.roll_ahead + 1)]
             Vb_k = [episode.chunks[i].value for i in range(k, k + self.roll_ahead + 1)]
             Rb_k = [episode.chunks[i + 1].reward for i in range(k, k + self.roll_ahead)]
@@ -84,13 +89,16 @@ class NeuralNetworkManager:
             total_loss.backward()
             self.optimizer.step()
 
+            wandb.log({"loss": total_loss.item()})
             self.loss_history.append(total_loss.item())
 
         final_loss_val = total_loss.item()
 
         return final_loss_val
 
-    def bptt(self, Sb_k: list[Environment], Ab_k: list[Tensor], PVR: tuple) -> torch.Tensor:
+    def bptt(
+        self, Sb_k: list[Environment], Ab_k: list[Tensor], PVR: tuple
+    ) -> torch.Tensor:
         """
         Perform Backpropagation Through Time (BPTT) on MuZero's three networks.
 
@@ -152,7 +160,9 @@ class NeuralNetworkManager:
 
         # No policy or reward for the final step, only a value
         final_PVR = ([], [final_target_value], [])
-        final_step_loss = self.loss(final_PVR, reward=None, value=final_pred_value, policy=None)
+        final_step_loss = self.loss(
+            final_PVR, reward=None, value=final_pred_value, policy=None
+        )
         total_loss += final_step_loss
 
         return total_loss
@@ -276,7 +286,9 @@ class NeuralNetworkManager:
                     matching.append((folder, dt_str))
 
         if not matching:
-            raise FileNotFoundError(f"No folder found in '{base_path}' with counter = {counter}")
+            raise FileNotFoundError(
+                f"No folder found in '{base_path}' with counter = {counter}"
+            )
 
         # Sort by dt_str descending so the newest is first
         matching.sort(key=lambda x: x[1], reverse=True)
