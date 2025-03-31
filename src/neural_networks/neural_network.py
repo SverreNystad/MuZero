@@ -260,3 +260,28 @@ class PredictionNetwork(nn.Module):
         policy_logits = self.policy_mlp(x_flat)  # [B, num_actions]
 
         return policy_logits, value
+
+def load_networks(model_folder_path: str, observation_space: torch.Tensor, num_actions: int) -> tuple[RepresentationNetwork, DynamicsNetwork, PredictionNetwork]:
+    """
+    Load the neural networks from the saved files.
+    """
+    config = load_config("config.yaml")
+    repr_net = RepresentationNetwork(
+        observation_space=observation_space,
+        latent_shape=config.networks.latent_shape,
+        config=config.networks.representation,
+    )
+    dyn_net = DynamicsNetwork(
+        latent_shape=config.networks.latent_shape,
+        num_actions=num_actions,
+        config=config.networks.dynamics,
+    )
+    pred_net = PredictionNetwork(
+        latent_shape=config.networks.latent_shape,
+        num_actions=num_actions,
+        config=config.networks.prediction,
+    )
+    repr_net.load_state_dict(torch.load(f"{model_folder_path}/repr.pth"))
+    dyn_net.load_state_dict(torch.load(f"{model_folder_path}/dyn.pth"))
+    pred_net.load_state_dict(torch.load(f"{model_folder_path}/pred.pth"))
+    return repr_net, dyn_net, pred_net  

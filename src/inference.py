@@ -1,15 +1,13 @@
 import torch
 
-from src.config.config_loader import load_config
 from src.environment import Environment
-from src.environments.factory import create_environment
 from src.neural_networks.neural_network import (
-    DynamicsNetwork,
     PredictionNetwork,
     RepresentationNetwork,
 )
 
-def inference_simulation(env: Environment, repr_net: RepresentationNetwork, pred_net: PredictionNetwork, inference_simulation_depth: int) -> None:
+
+def model_simulation(env: Environment, repr_net: RepresentationNetwork, pred_net: PredictionNetwork, inference_simulation_depth: int) -> None:
     state = env.get_state()
     for i in range(inference_simulation_depth):
         # Get the current state of the environment.
@@ -24,10 +22,11 @@ def inference_simulation(env: Environment, repr_net: RepresentationNetwork, pred
         
         # Pick the action with the highest probability.
         action = torch.argmax(policy).item()
-        print(f"Action: {action}")
         
         # Step the environment using the action.
         state, reward, done = env.step(action)
+        # Print the action, reward, and value.
+        print(f"Step {i}: Action: {action}, Reward: {reward}, Value: {value.item()}")
        
         # Check if the episode is done.
         if done:
