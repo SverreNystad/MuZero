@@ -16,6 +16,8 @@ from src.config.config_loader import (
     RepresentationNetworkConfig,
     load_config,
 )
+from src.environment import Environment
+from src.environments.factory import create_environment
 from src.neural_networks.network_builder import (
     ResBlock,
     build_downsample_layer,
@@ -261,11 +263,16 @@ class PredictionNetwork(nn.Module):
 
         return policy_logits, value
 
-def load_networks(model_folder_path: str, observation_space: torch.Tensor, num_actions: int) -> tuple[RepresentationNetwork, DynamicsNetwork, PredictionNetwork]:
+def load_networks(model_folder_path: str) -> tuple[RepresentationNetwork, DynamicsNetwork, PredictionNetwork]:
     """
     Load the neural networks from the saved files.
     """
     config = load_config("config.yaml")
+
+    env: Environment = create_environment(config.environment)
+    observation_space = env.get_observation_space()
+    num_actions = len(env.get_action_space())
+
     repr_net = RepresentationNetwork(
         observation_space=observation_space,
         latent_shape=config.networks.latent_shape,
