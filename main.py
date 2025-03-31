@@ -8,7 +8,12 @@ import os
 import optuna
 from dotenv import load_dotenv
 
-from src.config.config_loader import Configuration, TrainingConfig, TrainingDataGeneratorConfig, load_config
+from src.config.config_loader import (
+    Configuration,
+    TrainingConfig,
+    TrainingDataGeneratorConfig,
+    load_config,
+)
 from src.environments.factory import create_environment
 from src.neural_networks.neural_network import (
     DynamicsNetwork,
@@ -132,7 +137,9 @@ def train_model(
     return nnm.save_models(final_loss, config.environment, False)
 
 
-def generate_train_model_loop(n: int, config: Configuration) -> tuple[RepresentationNetwork, DynamicsNetwork, PredictionNetwork]:
+def generate_train_model_loop(
+    n: int, config: Configuration
+) -> tuple[RepresentationNetwork, DynamicsNetwork, PredictionNetwork]:
     repr_net = None
     dyn_net = None
     pred_net = None
@@ -141,11 +148,14 @@ def generate_train_model_loop(n: int, config: Configuration) -> tuple[Representa
     )
     for _ in trange(n):
         generate_training_data(repr_net, dyn_net, pred_net, config)
-        repr_net, dyn_net, pred_net = train_model(repr_net, dyn_net, pred_net, config)
+        repr_net, dyn_net, pred_net = train_model(
+            repr_net, dyn_net, pred_net, config, device
+        )
         # As better models create better training data, we can delete the old training data.
         delete_all_training_data()
 
     return repr_net, dyn_net, pred_net
+
 
 def objective(trial: optuna.Trial) -> float:
     """
@@ -163,7 +173,7 @@ def objective(trial: optuna.Trial) -> float:
     config.training = TrainingConfig(
         learning_rate=trial.suggest_float("learning_rate", 1e-5, 1e-2, log=True),
         batch_size=trial.suggest_int("batch_size", 1, 256),
-        epochs=trial.suggest_int("epochs", 1, 100), 
+        epochs=trial.suggest_int("epochs", 1, 100),
         betas=(0.9, 0.999),
         roll_ahead=trial.suggest_int("roll_ahead", 1, 10),
         look_back=trial.suggest_int("look_back", 1, 10),
@@ -173,10 +183,17 @@ def objective(trial: optuna.Trial) -> float:
     # Run the training loop.
     repr_net, dyn_net, pred_net = generate_train_model_loop(1, config)
     env = create_environment(config.environment)
-    running_reward = model_simulation(env, repr_net=repr_net, pred_net=pred_net, inference_simulation_depth=1000, human_mode=False)
+    running_reward = model_simulation(
+        env,
+        repr_net=repr_net,
+        pred_net=pred_net,
+        inference_simulation_depth=1000,
+        human_mode=False,
+    )
 
     return running_reward
-    
+
+
 def hyperparameter_search(n_trials: int) -> tuple[dict, float]:
 
     # Perform hyperparameter search using Optuna.
@@ -198,6 +215,7 @@ def hyperparameter_search(n_trials: int) -> tuple[dict, float]:
         }
     )
     return best_params, best_value
+
 
 def _profile_code(func: Callable, *args, **kwargs) -> None:
     """

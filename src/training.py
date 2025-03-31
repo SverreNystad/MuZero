@@ -132,9 +132,9 @@ class NeuralNetworkManager:
             if not isinstance(target_policy, torch.Tensor):
                 target_policy = torch.tensor(target_policy, dtype=torch.float32)
             if not isinstance(target_value, torch.Tensor):
-                target_value = torch.tensor(target_value, dtype=torch.float32)
+                target_value = torch.tensor([target_value], dtype=torch.float32)
             if not isinstance(target_reward, torch.Tensor):
-                target_reward = torch.tensor(target_reward, dtype=torch.float32)
+                target_reward = torch.tensor([target_reward], dtype=torch.float32)
 
             # Calculate the next latent state and reward
             action_i = Ab_k[i]
@@ -155,7 +155,7 @@ class NeuralNetworkManager:
         # Final Value at step k + roll_ahead
         final_target_value = Vb_k[self.roll_ahead]
         if not isinstance(final_target_value, torch.Tensor):
-            final_target_value = torch.tensor(final_target_value, dtype=torch.float32)
+            final_target_value = torch.tensor([final_target_value], dtype=torch.float32)
         _, final_pred_value = self.pred_net(latent_state)
 
         # No policy or reward for the final step, only a value
