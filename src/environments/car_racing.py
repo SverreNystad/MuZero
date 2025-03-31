@@ -5,6 +5,7 @@ from gym.envs.box2d.car_racing import CarRacing as CarRacingGym
 from gym.spaces.discrete import Discrete
 from pydantic import BaseModel
 from torch import Tensor
+from torch._prims_common import DeviceLikeType
 
 from src.environment import Environment
 
@@ -16,13 +17,14 @@ class CarRacingConfig(BaseModel):
 
 
 class CarRacing(Environment):
-    def __init__(self, config: CarRacingConfig):
+    def __init__(self, config: CarRacingConfig, device: DeviceLikeType):
         # By default, gym's CarRacing has continuous actions,
         # but you set continuous=False to get discrete actions.
         self.env = CarRacingGym(render_mode=config.render_mode, continuous=False)
         obs, _ = self.env.reset(seed=config.seed)  # returns (obs, info)
+        self.device = device
         # Convert the shape from (height, width, channels) to (channels, height, width)
-        self.last_obs = torch.from_numpy(obs).float().permute(2, 0, 1)
+        self.last_obs = torch.from_numpy(obs).float().permute(2, 0, 1).to(self.device)
         self.observation_space = self.env.observation_space
 
     def get_action_space(self) -> tuple[int, ...]:
@@ -41,9 +43,9 @@ class CarRacing(Environment):
         )
 
     def step(self, action: int) -> tuple[Tensor, float, bool]:
-        obs, reward, terminated, truncated, info = self.env.step(action)
+        obs, reward, terminated, truncated, _ = self.env.step(action)
         # Convert shape (96, 96, 3) -> (3, 96, 96)
-        obs_t = torch.from_numpy(obs).float().permute(2, 0, 1)
+        obs_t = torch.from_numpy(obs).float().permute(2, 0, 1).to(self.device)
         obs_t = obs_t.unsqueeze(0)  # (1, 3, 96, 96)
         self.last_obs = obs_t
         done = terminated or truncated
@@ -58,7 +60,7 @@ class CarRacing(Environment):
     def reset(self) -> Tensor:
         obs, _ = self.env.reset()
         # (3, 96, 96)
-        obs_t = torch.from_numpy(obs).float().permute(2, 0, 1)
+        obs_t = torch.from_numpy(obs).float().permute(2, 0, 1).to(self.device)
         obs_t = obs_t.unsqueeze(0)  # (1, 3, 96, 96)
         self.last_obs = obs_t
         return obs_t

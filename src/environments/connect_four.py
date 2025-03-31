@@ -4,6 +4,7 @@ from gymnasium.spaces import Box
 from pettingzoo.classic import connect_four_v3
 from pydantic import BaseModel
 from torch import Tensor, from_numpy
+from torch._prims_common import DeviceLikeType
 
 from src.environment import Environment
 
@@ -15,10 +16,11 @@ class ConnectFourConfig(BaseModel):
 
 
 class ConnectFour(Environment):
-    def __init__(self, config: ConnectFourConfig):
+    def __init__(self, config: ConnectFourConfig, device: DeviceLikeType):
         self.env = connect_four_v3.env(render_mode=config.render_mode)
         self.env.reset(seed=config.seed)
         self.observation_space = self.env.observation_space("player_0")
+        self.device = device
 
     def get_action_space(self) -> tuple[int, ...]:
         space: Box = self.observation_space["action_mask"]
@@ -33,8 +35,8 @@ class ConnectFour(Environment):
 
     def step(self, action: int) -> tuple[Tensor, float, bool]:
         self.env.step(action)
-        observation, reward, termination, truncation, info = self.env.last()
-        observation_t = from_numpy(observation["observation"])
+        observation, reward, termination, _, _ = self.env.last()
+        observation_t = from_numpy(observation["observation"]).to(self.device)
         observation_t = observation_t.float().permute(2, 0, 1)
         observation_t = observation_t.unsqueeze(0)
 
@@ -42,12 +44,22 @@ class ConnectFour(Environment):
 
     def get_state(self) -> Tensor:
         observation = self.env.last()[0]
-        return from_numpy(observation["observation"]).float().permute(2, 0, 1)
+        return (
+            from_numpy(observation["observation"])
+            .float()
+            .permute(2, 0, 1)
+            .to(self.device)
+        )
 
     def reset(self) -> Tensor:
         self.env.reset()
         observation = self.env.last()[0]
-        obs_t = from_numpy(observation["observation"]).float().permute(2, 0, 1)
+        obs_t = (
+            from_numpy(observation["observation"])
+            .float()
+            .permute(2, 0, 1)
+            .to(self.device)
+        )
         obs_t = obs_t.unsqueeze(0)
         return obs_t
 

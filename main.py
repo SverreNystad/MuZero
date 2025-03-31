@@ -1,8 +1,9 @@
 from collections.abc import Callable
 
+from torch._prims_common import DeviceLikeType
 from tqdm import trange
 import torch
-from src.config.config_loader import load_config
+from src.config.config_loader import Configuration, load_config
 from src.environments.factory import create_environment
 from src.neural_networks.neural_network import (
     DynamicsNetwork,
@@ -17,21 +18,20 @@ from src.training_data_generator import (
     save_training_data,
 )
 
+
 @torch.no_grad()
 def generate_training_data(
     repr_net: RepresentationNetwork | None,
     dyn_net: DynamicsNetwork | None,
     pred_net: PredictionNetwork | None,
-    config_name: str = "config.yaml",
+    config: Configuration,
+    device: DeviceLikeType = "cpu",
 ) -> None:
     """
     Generate training data for the training loop.
     """
-    # Load the configuration file.
-    config = load_config(config_name)
-
     # Create the environment using the factory method.
-    env = create_environment(config.environment)
+    env = create_environment(config.environment, device)
 
     num_actions = len(env.get_action_space())
     latent_shape = config.networks.latent_shape
@@ -41,7 +41,7 @@ def generate_training_data(
             observation_space=env.get_observation_space(),
             latent_shape=latent_shape,
             config=config.networks.representation,
-        )
+        ).to(device)
 
     # Load the dynamics network.
     if dyn_net is None:
@@ -49,7 +49,7 @@ def generate_training_data(
             latent_shape=latent_shape,
             num_actions=num_actions,
             config=config.networks.dynamics,
-        )
+        ).to(device)
 
     # Load the prediction network.
     if pred_net is None:
@@ -57,7 +57,7 @@ def generate_training_data(
             latent_shape=latent_shape,
             num_actions=num_actions,
             config=config.networks.prediction,
-        )
+        ).to(device)
 
     # Create the training data generator.
     training_data_generator = TrainingDataGenerator(
@@ -80,20 +80,20 @@ def train_model(
     repr_net: RepresentationNetwork | None,
     dyn_net: DynamicsNetwork | None,
     pred_net: PredictionNetwork | None,
-    config_name: str = "config.yaml",
+    config: Configuration,
+    device: DeviceLikeType = "cpu",
 ) -> tuple[RepresentationNetwork, DynamicsNetwork, PredictionNetwork]:
     """
     Train the model using the training data.
     """
     # load config
-    config = load_config(config_name)
 
     # load episodes
     episodes = load_all_training_data()
 
     # load networks
     # Create the environment using the factory method.
-    env = create_environment(config.environment)
+    env = create_environment(config.environment, device)
 
     num_actions = len(env.get_action_space())
     latent_shape = config.networks.latent_shape
@@ -103,7 +103,7 @@ def train_model(
             observation_space=env.get_observation_space(),
             latent_shape=latent_shape,
             config=config.networks.representation,
-        )
+        ).to(device)
 
     # Load the dynamics network.
     if dyn_net is None:
@@ -111,7 +111,7 @@ def train_model(
             latent_shape=latent_shape,
             num_actions=num_actions,
             config=config.networks.dynamics,
-        )
+        ).to(device)
 
     # Load the prediction network.
     if pred_net is None:
@@ -119,7 +119,7 @@ def train_model(
             latent_shape=latent_shape,
             num_actions=num_actions,
             config=config.networks.prediction,
-        )
+        ).to(device)
 
     nnm = NeuralNetworkManager(config.training, repr_net, dyn_net, pred_net)
 
@@ -128,13 +128,18 @@ def train_model(
     return nnm.save_models(final_loss, config.environment, False)
 
 
-def generate_train_model_loop(n: int, config_name: str = "config.yaml") -> None:
+def generate_train_model_loop(n: int, config: Configuration) -> None:
     repr_net = None
     dyn_net = None
     pred_net = None
+    device = torch.device(
+        "cuda" if config.runtime.use_cuda and torch.cuda.is_available() else "cpu"
+    )
     for _ in trange(n):
-        generate_training_data(repr_net, dyn_net, pred_net, config_name)
-        repr_net, dyn_net, pred_net = train_model(repr_net, dyn_net, pred_net, config_name)
+        generate_training_data(repr_net, dyn_net, pred_net, config, device)
+        repr_net, dyn_net, pred_net = train_model(
+            repr_net, dyn_net, pred_net, config, device
+        )
         # As better models create better training data, we can delete the old training data.
         delete_all_training_data()
 
@@ -164,4 +169,6 @@ def _profile_code(func: Callable, *args, **kwargs) -> None:
 if __name__ == "__main__":
     # _profile_code(generate_training_data)
     # _profile_code(train_model)
-    generate_train_model_loop(5)
+    config_name: str = "config.yaml"
+    config = load_config(config_name)
+    generate_train_model_loop(5, config)
