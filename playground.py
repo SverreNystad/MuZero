@@ -21,6 +21,6 @@ latent_shape = config.networks.latent_shape
 model_folder_path = "training_runs/models/6_20250331_103553"
 observation_space = env.get_observation_space()
 num_actions = len(env.get_action_space())
-repr_net, dyn_net, pred_net = load_networks(model_folder_path, observation_space, num_actions)
+repr_net, dyn_net, pred_net = load_networks(model_folder_path)
 
 model_simulation(env, repr_net, pred_net, inference_simulation_depth)
