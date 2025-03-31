@@ -1,7 +1,7 @@
 from collections.abc import Callable
 
 from tqdm import trange
-
+import torch
 from src.config.config_loader import load_config
 from src.environments.factory import create_environment
 from src.neural_networks.neural_network import (
@@ -17,7 +17,7 @@ from src.training_data_generator import (
     save_training_data,
 )
 
-
+@torch.no_grad()
 def generate_training_data(
     repr_net: RepresentationNetwork | None,
     dyn_net: DynamicsNetwork | None,
