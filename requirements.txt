@@ -70,7 +70,7 @@ ptyprocess==0.7.0
 pure_eval==0.2.3
 pycodestyle==2.12.1
 pydantic==2.10.6
-pydantic_core==2.27.2
+pydantic_core==2.33.1
 pyflakes==3.2.0
 pygame==2.6.1
 Pygments==2.19.1
