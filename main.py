@@ -1,13 +1,13 @@
+import os
 from collections.abc import Callable
 
+import optuna
+import torch
+from dotenv import load_dotenv
 from torch._prims_common import DeviceLikeType
 from tqdm import trange
-import torch
-import wandb
-import os
-import optuna
-from dotenv import load_dotenv
 
+import wandb
 from src.config.config_loader import (
     Configuration,
     TrainingConfig,
@@ -15,6 +15,7 @@ from src.config.config_loader import (
     load_config,
 )
 from src.environments.factory import create_environment
+from src.inference import model_simulation
 from src.neural_networks.neural_network import (
     DynamicsNetwork,
     PredictionNetwork,
@@ -27,7 +28,6 @@ from src.training_data_generator import (
     load_all_training_data,
     save_training_data,
 )
-from src.inference import model_simulation
 
 
 @torch.no_grad()
@@ -72,11 +72,7 @@ def generate_training_data(
 
     # Create the training data generator.
     training_data_generator = TrainingDataGenerator(
-        env=env,
-        repr_net=repr_net,
-        dyn_net=dyn_net,
-        pred_net=pred_net,
-        config=config.training_data_generator,
+        env=env, repr_net=repr_net, dyn_net=dyn_net, pred_net=pred_net, config=config.training_data_generator, device=device
     )
 
     # Generate the training data.
@@ -130,7 +126,7 @@ def train_model(
             config=config.networks.prediction,
         ).to(device)
 
-    nnm = NeuralNetworkManager(config.training, repr_net, dyn_net, pred_net)
+    nnm = NeuralNetworkManager(config.training, repr_net, dyn_net, pred_net, device)
 
     # train using episodes
     final_loss = nnm.train(episodes)
@@ -143,14 +139,10 @@ def generate_train_model_loop(
     repr_net = None
     dyn_net = None
     pred_net = None
-    device = torch.device(
-        "cuda" if config.runtime.use_cuda and torch.cuda.is_available() else "cpu"
-    )
+    device = torch.device("cuda" if config.runtime.use_cuda and torch.cuda.is_available() else "cpu")
     for _ in trange(n):
-        generate_training_data(repr_net, dyn_net, pred_net, config)
-        repr_net, dyn_net, pred_net = train_model(
-            repr_net, dyn_net, pred_net, config, device
-        )
+        generate_training_data(repr_net, dyn_net, pred_net, config, device)
+        repr_net, dyn_net, pred_net = train_model(repr_net, dyn_net, pred_net, config, device)
         # As better models create better training data, we can delete the old training data.
         delete_all_training_data()
 
@@ -195,7 +187,6 @@ def objective(trial: optuna.Trial) -> float:
 
 
 def hyperparameter_search(n_trials: int) -> tuple[dict, float]:
-
     # Perform hyperparameter search using Optuna.
     study_name = "optuna_training_and_data_generator_tuning"
     storage_name = f"sqlite:///{study_name}.db"
@@ -253,4 +244,4 @@ if __name__ == "__main__":
     # _profile_code(train_model)
     config_name: str = "config.yaml"
     config = load_config(config_name)
-    hyperparameter_search(2)
+    generate_train_model_loop(10, config)

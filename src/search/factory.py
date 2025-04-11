@@ -14,6 +14,7 @@ def create_mcts(
     prediction_network: PredictionNetwork,
     actions: torch.Tensor,
     config: MCTSConfig,
+    device="cpu",
 ) -> MCTS:
     """
     Factory method for creating an MCTS instance.
@@ -36,7 +37,7 @@ def create_mcts(
             selection_strategy = PUCT()
 
     # Create simulation and backpropagation strategies.
-    simulation_strategy = MuZeroSimulation(dynamics_network, prediction_network, config.depth)
+    simulation_strategy = MuZeroSimulation(dynamics_network, prediction_network, config.depth, device)
     backpropagation_strategy = Backpropagation(config.discount_factor)
 
     # Instantiate the MCTS object with the given strategies.

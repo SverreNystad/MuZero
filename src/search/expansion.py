@@ -22,6 +22,8 @@ def expand_node(
         raise ValueError("No possible actions to expand the node with")
 
     transformed_latent_state = _transform_latent_state(batch_size, node.latent_state)
+    print(f"transformed_latent_state: {transformed_latent_state.is_cuda}")
+    print(f"actions: {actions.is_cuda}")
 
     next_latent_states, rewards = dynamics_network(transformed_latent_state, actions)
     for i in range(batch_size):

@@ -8,15 +8,11 @@ from src.search.strategies import SimulationStrategy
 
 
 class MuZeroSimulation(SimulationStrategy):
-    def __init__(
-        self,
-        dynamic_network: DynamicsNetwork,
-        predictor: PredictionNetwork,
-        depth: int,
-    ) -> None:
+    def __init__(self, dynamic_network: DynamicsNetwork, predictor: PredictionNetwork, depth: int, device="cpu") -> None:
         self.dynamic_network = dynamic_network
         self.predictor = predictor
         self.depth = depth
+        self.device = device
 
     def __call__(self, node: Node) -> list[float]:
         """
@@ -31,7 +27,7 @@ class MuZeroSimulation(SimulationStrategy):
         accumulated_reward = []
         for _ in range(self.depth):
             policy, value = self.predictor(latent_state_batched)
-            action = tensor([policy.argmax().item()])  # shape [1]
+            action = tensor([policy.argmax().item()]).to(self.device)  # shape [1]
             next_latent_state, reward = self.dynamic_network(latent_state_batched, action)
             accumulated_reward.append(reward)
             latent_state_batched = next_latent_state
