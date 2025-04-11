@@ -9,6 +9,7 @@ import torch.nn.functional as F
 from torch import Tensor
 from tqdm import trange
 
+import wandb
 from src.config.config_loader import EnvironmentConfig, TrainingConfig
 from src.neural_networks.neural_network import (
     DynamicsNetwork,
@@ -87,6 +88,7 @@ class NeuralNetworkManager:
             total_loss.backward()
             self.optimizer.step()
 
+            wandb.log({"loss": total_loss.item()})
             self.loss_history.append(total_loss.item())
 
         final_loss_val = total_loss.item()

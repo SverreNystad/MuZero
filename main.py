@@ -44,35 +44,14 @@ def generate_training_data(
     # Create the environment using the factory method.
     env = create_environment(config.environment, device)
 
-    num_actions = len(env.get_action_space())
-    latent_shape = config.networks.latent_shape
-    # Load the representation network.
-    if repr_net is None:
-        repr_net = RepresentationNetwork(
-            observation_space=env.get_observation_space(),
-            latent_shape=latent_shape,
-            config=config.networks.representation,
-        ).to(device)
-
-    # Load the dynamics network.
-    if dyn_net is None:
-        dyn_net = DynamicsNetwork(
-            latent_shape=latent_shape,
-            num_actions=num_actions,
-            config=config.networks.dynamics,
-        ).to(device)
-
-    # Load the prediction network.
-    if pred_net is None:
-        pred_net = PredictionNetwork(
-            latent_shape=latent_shape,
-            num_actions=num_actions,
-            config=config.networks.prediction,
-        ).to(device)
-
     # Create the training data generator.
     training_data_generator = TrainingDataGenerator(
-        env=env, repr_net=repr_net, dyn_net=dyn_net, pred_net=pred_net, config=config.training_data_generator, device=device
+        env=env,
+        repr_net=repr_net,
+        dyn_net=dyn_net,
+        pred_net=pred_net,
+        config=config.training_data_generator,
+        device=device,
     )
 
     # Generate the training data.
@@ -96,36 +75,6 @@ def train_model(
     # load episodes
     episodes = load_all_training_data()
 
-    # load networks
-    # Create the environment using the factory method.
-    env = create_environment(config.environment, device)
-
-    num_actions = len(env.get_action_space())
-    latent_shape = config.networks.latent_shape
-    # Load the representation network.
-    if repr_net is None:
-        repr_net = RepresentationNetwork(
-            observation_space=env.get_observation_space(),
-            latent_shape=latent_shape,
-            config=config.networks.representation,
-        ).to(device)
-
-    # Load the dynamics network.
-    if dyn_net is None:
-        dyn_net = DynamicsNetwork(
-            latent_shape=latent_shape,
-            num_actions=num_actions,
-            config=config.networks.dynamics,
-        ).to(device)
-
-    # Load the prediction network.
-    if pred_net is None:
-        pred_net = PredictionNetwork(
-            latent_shape=latent_shape,
-            num_actions=num_actions,
-            config=config.networks.prediction,
-        ).to(device)
-
     nnm = NeuralNetworkManager(config.training, repr_net, dyn_net, pred_net, device)
 
     # train using episodes
@@ -136,15 +85,56 @@ def train_model(
 def generate_train_model_loop(
     n: int, config: Configuration
 ) -> tuple[RepresentationNetwork, DynamicsNetwork, PredictionNetwork]:
-    repr_net = None
-    dyn_net = None
-    pred_net = None
     device = torch.device("cuda" if config.runtime.use_cuda and torch.cuda.is_available() else "cpu")
-    for _ in trange(n):
+    env = create_environment(config.environment, device)
+
+    num_actions = len(env.get_action_space())
+    latent_shape = config.networks.latent_shape
+    repr_net = RepresentationNetwork(
+        observation_space=env.get_observation_space(),
+        latent_shape=latent_shape,
+        config=config.networks.representation,
+    ).to(device)
+
+    dyn_net = DynamicsNetwork(
+        latent_shape=latent_shape,
+        num_actions=num_actions,
+        config=config.networks.dynamics,
+    ).to(device)
+
+    pred_net = PredictionNetwork(
+        latent_shape=latent_shape,
+        num_actions=num_actions,
+        config=config.networks.prediction,
+    ).to(device)
+
+    wandb.watch(repr_net, log="all")
+    wandb.watch(dyn_net, log="all")
+    wandb.watch(pred_net, log="all")
+
+    for i in trange(n):
         generate_training_data(repr_net, dyn_net, pred_net, config, device)
         repr_net, dyn_net, pred_net = train_model(repr_net, dyn_net, pred_net, config, device)
         # As better models create better training data, we can delete the old training data.
         delete_all_training_data()
+
+        # Check performance of the model.
+        if i % 2 == 0:
+            total_reward = 0
+            k = 3
+            for _ in range(k):
+                simulation_video_path = f"simulation_{i}.mp4"
+                total_reward += model_simulation(
+                    env,
+                    repr_net=repr_net,
+                    pred_net=pred_net,
+                    inference_simulation_depth=300,
+                    human_mode=False,
+                    video_path=simulation_video_path,
+                )
+
+            wandb.log({f"Simulation_{i}": wandb.Video(simulation_video_path, caption=f"Simulation of model {i}")})
+            wandb.log({"reward": total_reward / k})
 
     return repr_net, dyn_net, pred_net
 
@@ -237,11 +227,15 @@ if __name__ == "__main__":
     wandb.login(key=WANDB_API_KEY)
     wandb.init(
         project="muzero",
+        # mode="disabled",
         # Track hyperparameters and run metadata.
+        config=config,
     )
 
     # _profile_code(generate_training_data)
     # _profile_code(train_model)
     config_name: str = "config.yaml"
     config = load_config(config_name)
-    generate_train_model_loop(10, config)
+    generate_train_model_loop(100, config)
+
+    wandb.finish()

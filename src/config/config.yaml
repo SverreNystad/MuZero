@@ -8,13 +8,13 @@ environment:
 
 # Monte Carlo Tree Search (MCTS) configuration
 training_data_generator:
-  num_episodes: 2                   # total number of episodes for self-play/learning
-  max_steps_per_episode: 10
+  num_episodes: 10                   # total number of episodes for self-play/learning
+  max_steps_per_episode: 50
   total_time: 3600
   mcts:
       selection_strategy: "puct"          # can be "uct" or "puct"
-      max_iterations: 10                       # maximum iterations (set to 0 if using time-based termination)
-      max_time: 10.0                      # maximum search time per move (in seconds)
+      max_iterations: 50                       # maximum iterations (set to 0 if using time-based termination)
+      max_time: 100.0                      # maximum search time per move (in seconds)
       depth: 1
       discount_factor: 0.998
 
@@ -26,7 +26,7 @@ training:
   batch_size: 32
   betas: [0.9, 0.999]
   look_back: 4                        # number of past states to include in the input sequence
-  roll_ahead: 1
+  roll_ahead: 5
   mini_batch_size: 256
 
 # Neural network configurations
