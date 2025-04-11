@@ -156,9 +156,6 @@ class DynamicsNetwork(nn.Module):
             next_latent: [B, C, H, W]
             reward: [B, 1] (or whatever size the last layer of reward_mlp produces)
         """
-        print(f"latent_state: {latent_state.is_cuda}")
-        print(f"action: {action.is_cuda}")
-
         B, C, H, W = latent_state.shape
         # assert (C, H, W) == self.latent_shape, "Latent shape mismatch."
 

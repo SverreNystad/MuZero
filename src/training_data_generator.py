@@ -123,7 +123,7 @@ class TrainingDataGenerator:
                 )
                 tree_policy, value = self.mcts.run(root)
 
-                policy_tensor = Tensor(tree_policy)
+                policy_tensor = Tensor(tree_policy).to(self.device)
 
                 # Choose the best action by maximum probability in `tree_policy`.
                 best_action = int(policy_tensor.argmax().item())

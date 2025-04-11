@@ -9,7 +9,6 @@ import torch.nn.functional as F
 from torch import Tensor
 from tqdm import trange
 
-import wandb
 from src.config.config_loader import EnvironmentConfig, TrainingConfig
 from src.neural_networks.neural_network import (
     DynamicsNetwork,
@@ -59,9 +58,6 @@ class NeuralNetworkManager:
         After training, automatically saves the model in /models/<counter>_<datetime>/,
         where <counter> is the next available integer after scanning existing folders.
         """
-        wandb.watch(self.repr_net, log="all")
-        wandb.watch(self.dyn_net, log="all")
-        wandb.watch(self.pred_net, log="all")
 
         final_loss_val = 0.0
         total_loss = torch.zeros(1, dtype=torch.float32).to(self.device)
@@ -178,14 +174,6 @@ class NeuralNetworkManager:
             torch.Tensor: The summed loss for policy, value, and reward.
         """
         Πb_k, Vb_k, Rb_k = PVR
-
-        for r in Rb_k:
-            print(f"Reward: {r.device}")
-
-        for v in Vb_k:
-            print(f"Value: {v.device}")
-        for p in Πb_k:
-            print(f"Policy: {p.device}")
         policy_loss_val = torch.zeros(1, dtype=torch.float32).to(self.device)
         value_loss_val = torch.zeros(1, dtype=torch.float32).to(self.device)
         reward_loss_val = torch.zeros(1, dtype=torch.float32).to(self.device)
