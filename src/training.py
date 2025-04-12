@@ -61,7 +61,9 @@ class NeuralNetworkManager:
         """
         batch_size = self.config.batch_size  # e.g. 128
         epochs = self.config.epochs  # e.g. 10
+        episode_history = self._filter_for_valid_episodes(episode_history)
         total_steps = len(episode_history)  # total episodes
+        batch_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
 
         for epoch in trange(epochs):
             # Shuffle the data each epoch for more robust training
@@ -107,7 +109,21 @@ class NeuralNetworkManager:
                     self.optimizer.step()
                     self.loss_history.append(batch_loss.item())
                     wandb.log({"loss": batch_loss.item()})
+
         return batch_loss.item()
+
+    def _filter_for_valid_episodes(self, episode_history: list[Episode]) -> list[Episode]:
+        valid_episodes = []
+        for episode in episode_history:
+            # Check if the episode has enough chunks for training
+            if len(episode.chunks) >= self.lookback + self.roll_ahead + 1:
+                valid_episodes.append(episode)
+            else:
+                print(
+                    f"Skipping episode with {len(episode.chunks)} chunks; "
+                    f"requires at least {self.lookback + self.roll_ahead + 1}."
+                )
+        return valid_episodes
 
     def bptt(self, Sb_k: list[Tensor], Ab_k: list[Tensor], PVR: tuple) -> torch.Tensor:
         """
