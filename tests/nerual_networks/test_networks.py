@@ -1,5 +1,3 @@
-import random
-
 import pytest
 import torch
 
@@ -129,9 +127,10 @@ def tiny_pred_net(latent_shape=(2, 1, 1), num_actions=2):
 @pytest.mark.parametrize(
     "observation_space, latent_shape, num_actions",
     [
-        ((3, 6, 6), (2, 6, 7), 10),
-        ((1, 4, 4), (2, 4, 4), 10),
+        ((3, 6, 6), (2, 6, 7), 2),
+        ((1, 4, 4), (2, 4, 4), 5),
         ((1, 4, 3), (2, 2, 2), 10),
+        ((1, 4, 3), (2, 2, 2), 100),
     ],
 )
 def test_minimal_forward_pass(observation_space, latent_shape, num_actions):
@@ -143,11 +142,12 @@ def test_minimal_forward_pass(observation_space, latent_shape, num_actions):
     dyn_net = tiny_dyn_net(latent_shape, num_actions=num_actions)
     pred_net = tiny_pred_net(latent_shape, num_actions=num_actions)
     latent = repr_net(obs)
-    next_latent, reward = dyn_net(latent, torch.tensor([random.randint(0, num_actions)]))
-    policy_logits, value = pred_net(latent)
+    for action in range(num_actions):
+        next_latent, reward = dyn_net(latent, torch.tensor([action]))
+        policy_logits, value = pred_net(latent)
 
-    assert latent.shape == (1, *latent_shape)
-    assert next_latent.shape == (1, *latent_shape)
-    assert reward.shape == (1, 1)
-    assert policy_logits.shape == (1, num_actions)
-    assert value.shape == (1, 1)
+        assert latent.shape == (1, *latent_shape)
+        assert next_latent.shape == (1, *latent_shape)
+        assert reward.shape == (1, 1)
+        assert policy_logits.shape == (1, num_actions)
+        assert value.shape == (1, 1)
