@@ -101,6 +101,7 @@ class TrainingConfig(BaseModel):
     look_back: int
     mini_batch_size: int
 
+
 class RunTimeConfig(BaseModel):
     use_cuda: bool
 
@@ -111,7 +112,6 @@ class Configuration(BaseModel):
     training_data_generator: TrainingDataGeneratorConfig
     training: TrainingConfig
     runtime: RunTimeConfig
-
 
 
 def load_config(filename: str) -> Configuration:

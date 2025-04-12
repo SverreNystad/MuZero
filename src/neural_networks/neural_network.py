@@ -258,7 +258,9 @@ class PredictionNetwork(nn.Module):
         return policy_logits, value
 
 
-def load_networks(model_folder_path: str) -> tuple[RepresentationNetwork, DynamicsNetwork, PredictionNetwork]:
+def load_networks(
+    model_folder_path: str,
+) -> tuple[RepresentationNetwork, DynamicsNetwork, PredictionNetwork]:
     """
     Load the neural networks from the saved files.
     """

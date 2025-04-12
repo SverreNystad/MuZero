@@ -1,15 +1,8 @@
-import torch
-
 from src.config.config_loader import load_config
-from src.environment import Environment
 from src.environments.factory import create_environment
-from src.neural_networks.neural_network import (
-    DynamicsNetwork,
-    PredictionNetwork,
-    RepresentationNetwork,
-    load_networks
-)
 from src.inference import model_simulation
+from src.neural_networks.neural_network import load_networks
+
 config = load_config("config.yaml")
 config.environment.render_mode = "human"
 env = create_environment(config.environment)

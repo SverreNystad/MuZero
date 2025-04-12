@@ -8,7 +8,13 @@ from src.search.strategies import SimulationStrategy
 
 
 class MuZeroSimulation(SimulationStrategy):
-    def __init__(self, dynamic_network: DynamicsNetwork, predictor: PredictionNetwork, depth: int, device="cpu") -> None:
+    def __init__(
+        self,
+        dynamic_network: DynamicsNetwork,
+        predictor: PredictionNetwork,
+        depth: int,
+        device="cpu",
+    ) -> None:
         self.dynamic_network = dynamic_network
         self.predictor = predictor
         self.depth = depth
