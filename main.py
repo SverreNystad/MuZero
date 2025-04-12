@@ -119,22 +119,21 @@ def generate_train_model_loop(
         delete_all_training_data()
 
         # Check performance of the model.
-        if i % 2 == 0:
-            total_reward = 0
-            k = 3
-            for _ in range(k):
-                simulation_video_path = f"simulation_{i}.mp4"
-                total_reward += model_simulation(
-                    env,
-                    repr_net=repr_net,
-                    pred_net=pred_net,
-                    inference_simulation_depth=300,
-                    human_mode=False,
-                    video_path=simulation_video_path,
-                )
-
+        total_reward = 0
+        k = 3
+        for _ in range(k):
+            simulation_video_path = f"simulation_{i}.mp4"
+            total_reward += model_simulation(
+                env,
+                repr_net=repr_net,
+                pred_net=pred_net,
+                inference_simulation_depth=300,
+                human_mode=False,
+                video_path=simulation_video_path,
+            )
+        wandb.log({"reward": total_reward / k})
+        if i % 10 == 0:
             wandb.log({f"Simulation_{i}": wandb.Video(simulation_video_path, caption=f"Simulation of model {i}")})
-            wandb.log({"reward": total_reward / k})
 
     return repr_net, dyn_net, pred_net
 
@@ -236,6 +235,6 @@ if __name__ == "__main__":
     # _profile_code(train_model)
     config_name: str = "config.yaml"
     config = load_config(config_name)
-    generate_train_model_loop(100, config)
+    generate_train_model_loop(1000, config)
 
     wandb.finish()
