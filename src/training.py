@@ -8,10 +8,9 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 from tqdm import trange
-import wandb
 
+import wandb
 from src.config.config_loader import EnvironmentConfig, TrainingConfig
-from src.environment import Environment
 from src.neural_networks.neural_network import (
     DynamicsNetwork,
     PredictionNetwork,
@@ -30,6 +29,7 @@ class NeuralNetworkManager:
         repr_net: RepresentationNetwork,
         dyn_net: DynamicsNetwork,
         pred_net: PredictionNetwork,
+        device="cpu",
     ):
         """
         Args:
@@ -46,12 +46,12 @@ class NeuralNetworkManager:
         self.loss_history = []
 
         self.optimizer = torch.optim.Adam(
-            list(self.repr_net.parameters())
-            + list(self.dyn_net.parameters())
-            + list(self.pred_net.parameters()),
+            list(self.repr_net.parameters()) + list(self.dyn_net.parameters()) + list(self.pred_net.parameters()),
             lr=config.learning_rate,
             betas=config.betas,
         )
+
+        self.device = device
 
     def train(self, episode_history: list[Episode]):
         """
@@ -59,51 +59,78 @@ class NeuralNetworkManager:
         After training, automatically saves the model in /models/<counter>_<datetime>/,
         where <counter> is the next available integer after scanning existing folders.
         """
-        final_loss_val = 0.0
-        total_loss = torch.zeros(1, dtype=torch.float32)
-        for _ in trange(self.mbs):
-            # Randomly pick an episode
-            b = random.randrange(len(episode_history))
-            episode = episode_history[b]
+        batch_size = self.config.batch_size  # e.g. 128
+        epochs = self.config.epochs  # e.g. 10
+        episode_history = self._filter_for_valid_episodes(episode_history)
+        total_steps = len(episode_history)  # total episodes
+        batch_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
 
-            # Sample a valid starting index for unrolling
-            max_k = len(episode.chunks) - (self.roll_ahead + 1)
-            if max_k < 0:
-                # Not enough steps in this episode to do roll_ahead
-                continue
-            k = random.randrange(max_k + 1)
-            start_idx = max(0, k - self.lookback)
+        for epoch in trange(epochs):
+            # Shuffle the data each epoch for more robust training
+            random.shuffle(episode_history)
 
-            # Gather data
-            Sb_k = [episode.chunks[i].state for i in range(start_idx, k + 1)]
-            Ab_k = [
-                episode.chunks[i].best_action for i in range(k, k + self.roll_ahead)
-            ]
-            Pb_k = [episode.chunks[i].policy for i in range(k, k + self.roll_ahead + 1)]
-            Vb_k = [episode.chunks[i].value for i in range(k, k + self.roll_ahead + 1)]
-            Rb_k = [episode.chunks[i + 1].reward for i in range(k, k + self.roll_ahead)]
+            # Iterate over the dataset in mini-batches
+            # We'll chunk the entire list into [0:batch_size], [batch_size:2*batch_size], etc.
+            for start_idx in range(0, total_steps, batch_size):
+                end_idx = min(start_idx + batch_size, total_steps)
+                current_batch = episode_history[start_idx:end_idx]
 
-            # Optimize
-            self.optimizer.zero_grad()
-            total_loss = self.bptt(Sb_k, Ab_k, (Pb_k, Vb_k, Rb_k))
-            total_loss.backward()
-            self.optimizer.step()
+                # We'll accumulate the total loss across all episodes in this mini-batch
+                batch_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
+                self.optimizer.zero_grad()
 
-            wandb.log({"loss": total_loss.item()})
-            self.loss_history.append(total_loss.item())
+                for episode in current_batch:
+                    # Sample a valid starting index for unrolling from this particular episode
+                    max_k = len(episode.chunks) - (self.roll_ahead + 1)
+                    if max_k < 0:
+                        # Not enough steps to do roll_ahead; skip
+                        continue
 
-        final_loss_val = total_loss.item()
+                    k = random.randrange(max_k + 1)
+                    start_roll_idx = max(0, k - self.lookback)
 
-        return final_loss_val
+                    # Gather data from the chosen segment
+                    Sb_k = [episode.chunks[i].state for i in range(start_roll_idx, k + 1)]
+                    Ab_k = [episode.chunks[i].best_action for i in range(k, k + self.roll_ahead)]
+                    Pb_k = [episode.chunks[i].policy for i in range(k, k + self.roll_ahead + 1)]
+                    Vb_k = [episode.chunks[i].value for i in range(k, k + self.roll_ahead + 1)]
+                    Rb_k = [episode.chunks[i + 1].reward for i in range(k, k + self.roll_ahead)]
 
-    def bptt(
-        self, Sb_k: list[Environment], Ab_k: list[Tensor], PVR: tuple
-    ) -> torch.Tensor:
+                    # Compute loss for this chunk
+                    step_loss = self.bptt(Sb_k, Ab_k, (Pb_k, Vb_k, Rb_k))
+                    batch_loss += step_loss
+
+                # Average loss across the mini-batch
+                effective_batch_size = len(current_batch)
+                if effective_batch_size > 0:
+                    batch_loss = batch_loss / effective_batch_size
+                    # Now do a single backward pass for the entire mini-batch
+                    batch_loss.backward()
+                    self.optimizer.step()
+                    self.loss_history.append(batch_loss.item())
+                    wandb.log({"loss": batch_loss.item()})
+
+        return batch_loss.item()
+
+    def _filter_for_valid_episodes(self, episode_history: list[Episode]) -> list[Episode]:
+        valid_episodes = []
+        for episode in episode_history:
+            # Check if the episode has enough chunks for training
+            if len(episode.chunks) >= self.lookback + self.roll_ahead + 1:
+                valid_episodes.append(episode)
+            else:
+                print(
+                    f"Skipping episode with {len(episode.chunks)} chunks; "
+                    f"requires at least {self.lookback + self.roll_ahead + 1}."
+                )
+        return valid_episodes
+
+    def bptt(self, Sb_k: list[Tensor], Ab_k: list[Tensor], PVR: tuple) -> torch.Tensor:
         """
         Perform Backpropagation Through Time (BPTT) on MuZero's three networks.
 
         Args:
-            Sb_k (list[Environment]): States from [k - lookback ... k].
+            Sb_k (list[Tensor]): States from [k - lookback ... k].
             Ab_k (list[Tensor]): Actions for roll_ahead steps k..k+w-1.
             PVR (tuple): ([π], [v], [r]) from k..k+w (policies & values),
                          and k+1..k+w (rewards).
@@ -114,10 +141,10 @@ class NeuralNetworkManager:
 
         last_real_state = Sb_k[-1]
         if not isinstance(last_real_state, torch.Tensor):
-            last_real_state = torch.tensor(last_real_state, dtype=torch.float32)
+            last_real_state = torch.tensor(last_real_state, dtype=torch.float32).to(self.device)
         latent_state = self.repr_net(last_real_state)
 
-        total_loss = torch.zeros(1, dtype=torch.float32)
+        total_loss = torch.zeros(1, dtype=torch.float32).to(self.device)
 
         # Unroll for self.roll_ahead steps
         for i in range(self.roll_ahead):
@@ -130,16 +157,16 @@ class NeuralNetworkManager:
             target_reward = Rb_k[i]
 
             if not isinstance(target_policy, torch.Tensor):
-                target_policy = torch.tensor(target_policy, dtype=torch.float32)
+                target_policy = torch.tensor(target_policy, dtype=torch.float32).to(self.device)
             if not isinstance(target_value, torch.Tensor):
-                target_value = torch.tensor([target_value], dtype=torch.float32)
+                target_value = torch.tensor([target_value], dtype=torch.float32).to(self.device)
             if not isinstance(target_reward, torch.Tensor):
-                target_reward = torch.tensor([target_reward], dtype=torch.float32)
+                target_reward = torch.tensor([target_reward], dtype=torch.float32).to(self.device)
 
             # Calculate the next latent state and reward
             action_i = Ab_k[i]
             if not isinstance(action_i, torch.Tensor):
-                action_i = torch.tensor([action_i], dtype=torch.long)
+                action_i = torch.tensor([action_i], dtype=torch.long).to(self.device)
             next_latent_state, pred_reward = self.dyn_net(latent_state, action_i)
 
             # Single-step "PVR"
@@ -155,14 +182,12 @@ class NeuralNetworkManager:
         # Final Value at step k + roll_ahead
         final_target_value = Vb_k[self.roll_ahead]
         if not isinstance(final_target_value, torch.Tensor):
-            final_target_value = torch.tensor([final_target_value], dtype=torch.float32)
+            final_target_value = torch.tensor([final_target_value], dtype=torch.float32).to(self.device)
         _, final_pred_value = self.pred_net(latent_state)
 
         # No policy or reward for the final step, only a value
         final_PVR = ([], [final_target_value], [])
-        final_step_loss = self.loss(
-            final_PVR, reward=None, value=final_pred_value, policy=None
-        )
+        final_step_loss = self.loss(final_PVR, reward=None, value=final_pred_value, policy=None)
         total_loss += final_step_loss
 
         return total_loss
@@ -181,10 +206,9 @@ class NeuralNetworkManager:
             torch.Tensor: The summed loss for policy, value, and reward.
         """
         Πb_k, Vb_k, Rb_k = PVR
-
-        policy_loss_val = torch.zeros(1, dtype=torch.float32)
-        value_loss_val = torch.zeros(1, dtype=torch.float32)
-        reward_loss_val = torch.zeros(1, dtype=torch.float32)
+        policy_loss_val = torch.zeros(1, dtype=torch.float32).to(self.device)
+        value_loss_val = torch.zeros(1, dtype=torch.float32).to(self.device)
+        reward_loss_val = torch.zeros(1, dtype=torch.float32).to(self.device)
 
         # 1) Policy loss
         if policy is not None and len(Πb_k) > 0:
@@ -201,7 +225,6 @@ class NeuralNetworkManager:
         if reward is not None and len(Rb_k) > 0:
             target_reward = Rb_k[0]
             reward_loss_val = self.reward_loss(target_reward, reward[0])
-
         return policy_loss_val + value_loss_val + reward_loss_val
 
     def reward_loss(self, target_reward: Tensor, pred_reward: Tensor) -> Tensor:
@@ -286,9 +309,7 @@ class NeuralNetworkManager:
                     matching.append((folder, dt_str))
 
         if not matching:
-            raise FileNotFoundError(
-                f"No folder found in '{base_path}' with counter = {counter}"
-            )
+            raise FileNotFoundError(f"No folder found in '{base_path}' with counter = {counter}")
 
         # Sort by dt_str descending so the newest is first
         matching.sort(key=lambda x: x[1], reverse=True)

@@ -53,6 +53,7 @@ class TrainingDataGenerator:
         dyn_net: DynamicsNetwork,
         pred_net: PredictionNetwork,
         config: TrainingDataGeneratorConfig,
+        device="cpu",
     ):
         """
         Args:
@@ -70,6 +71,7 @@ class TrainingDataGenerator:
         self.repr_net = repr_net
         self.dyn_net = dyn_net
         self.pred_net = pred_net
+        self.device = device
 
         self.num_episodes: int = config.num_episodes  # N_e
         self.max_steps: int = config.max_steps_per_episode  # N_es
@@ -79,6 +81,7 @@ class TrainingDataGenerator:
             prediction_network=pred_net,
             actions=self._make_actions_tensor(env),
             config=config.mcts,
+            device=device,
         )
 
     def _make_actions_tensor(self, env: Environment) -> Tensor:
@@ -89,9 +92,9 @@ class TrainingDataGenerator:
         # we can create a range tensor of that size.
         action_space = env.get_action_space()
         if isinstance(action_space, int):
-            return Tensor(range(action_space)).long()
+            return Tensor(range(action_space)).long().to(self.device)
         # If your environment's action space is already a tuple or list, etc.
-        return Tensor(action_space).long()
+        return Tensor(action_space).long().to(self.device)
 
     def generate_training_data(self) -> list[Episode]:
         """
@@ -120,7 +123,7 @@ class TrainingDataGenerator:
                 )
                 tree_policy, value = self.mcts.run(root)
 
-                policy_tensor = Tensor(tree_policy)
+                policy_tensor = Tensor(tree_policy).to(self.device)
 
                 # Choose the best action by maximum probability in `tree_policy`.
                 best_action = int(policy_tensor.argmax().item())
