@@ -59,41 +59,55 @@ class NeuralNetworkManager:
         After training, automatically saves the model in /models/<counter>_<datetime>/,
         where <counter> is the next available integer after scanning existing folders.
         """
+        batch_size = self.config.batch_size  # e.g. 128
+        epochs = self.config.epochs  # e.g. 10
+        total_steps = len(episode_history)  # total episodes
 
-        final_loss_val = 0.0
-        total_loss = torch.zeros(1, dtype=torch.float32).to(self.device)
-        for _ in trange(self.mbs):
-            # Randomly pick an episode
-            b = random.randrange(len(episode_history))
-            episode = episode_history[b]
+        for epoch in trange(epochs):
+            # Shuffle the data each epoch for more robust training
+            random.shuffle(episode_history)
 
-            # Sample a valid starting index for unrolling
-            max_k = len(episode.chunks) - (self.roll_ahead + 1)
-            if max_k < 0:
-                # Not enough steps in this episode to do roll_ahead
-                continue
-            k = random.randrange(max_k + 1)
-            start_idx = max(0, k - self.lookback)
+            # Iterate over the dataset in mini-batches
+            # We'll chunk the entire list into [0:batch_size], [batch_size:2*batch_size], etc.
+            for start_idx in range(0, total_steps, batch_size):
+                end_idx = min(start_idx + batch_size, total_steps)
+                current_batch = episode_history[start_idx:end_idx]
 
-            # Gather data
-            Sb_k = [episode.chunks[i].state for i in range(start_idx, k + 1)]
-            Ab_k = [episode.chunks[i].best_action for i in range(k, k + self.roll_ahead)]
-            Pb_k = [episode.chunks[i].policy for i in range(k, k + self.roll_ahead + 1)]
-            Vb_k = [episode.chunks[i].value for i in range(k, k + self.roll_ahead + 1)]
-            Rb_k = [episode.chunks[i + 1].reward for i in range(k, k + self.roll_ahead)]
+                # We'll accumulate the total loss across all episodes in this mini-batch
+                batch_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
+                self.optimizer.zero_grad()
 
-            # Optimize
-            self.optimizer.zero_grad()
-            total_loss = self.bptt(Sb_k, Ab_k, (Pb_k, Vb_k, Rb_k))
-            total_loss.backward()
-            self.optimizer.step()
+                for episode in current_batch:
+                    # Sample a valid starting index for unrolling from this particular episode
+                    max_k = len(episode.chunks) - (self.roll_ahead + 1)
+                    if max_k < 0:
+                        # Not enough steps to do roll_ahead; skip
+                        continue
 
-            wandb.log({"loss": total_loss.item()})
-            self.loss_history.append(total_loss.item())
+                    k = random.randrange(max_k + 1)
+                    start_roll_idx = max(0, k - self.lookback)
 
-        final_loss_val = total_loss.item()
+                    # Gather data from the chosen segment
+                    Sb_k = [episode.chunks[i].state for i in range(start_roll_idx, k + 1)]
+                    Ab_k = [episode.chunks[i].best_action for i in range(k, k + self.roll_ahead)]
+                    Pb_k = [episode.chunks[i].policy for i in range(k, k + self.roll_ahead + 1)]
+                    Vb_k = [episode.chunks[i].value for i in range(k, k + self.roll_ahead + 1)]
+                    Rb_k = [episode.chunks[i + 1].reward for i in range(k, k + self.roll_ahead)]
 
-        return final_loss_val
+                    # Compute loss for this chunk
+                    step_loss = self.bptt(Sb_k, Ab_k, (Pb_k, Vb_k, Rb_k))
+                    batch_loss += step_loss
+
+                # Average loss across the mini-batch
+                effective_batch_size = len(current_batch)
+                if effective_batch_size > 0:
+                    batch_loss = batch_loss / effective_batch_size
+                    # Now do a single backward pass for the entire mini-batch
+                    batch_loss.backward()
+                    self.optimizer.step()
+                    self.loss_history.append(batch_loss.item())
+                    wandb.log({"loss": batch_loss.item()})
+        return batch_loss.item()
 
     def bptt(self, Sb_k: list[Tensor], Ab_k: list[Tensor], PVR: tuple) -> torch.Tensor:
         """
