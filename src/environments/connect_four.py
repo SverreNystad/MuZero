@@ -24,7 +24,10 @@ class ConnectFour(Environment):
         self.to_play = self.env.agent_selection
 
     def get_to_play(self) -> int:
-        return self.to_play
+        if self.to_play == "player_0":
+            return 1
+        else:  # "player_1"
+            return -1
 
     def get_action_space(self) -> tuple[int, ...]:
         space: Box = self.observation_space["action_mask"]
@@ -45,12 +48,13 @@ class ConnectFour(Environment):
         observation_t = from_numpy(observation["observation"]).to(self.device)
         observation_t = observation_t.float().permute(2, 0, 1)
         observation_t = observation_t.unsqueeze(0)
-
         return observation_t, reward, termination
 
     def get_state(self) -> Tensor:
         observation = self.env.last()[0]
-        return from_numpy(observation["observation"]).float().permute(2, 0, 1).to(self.device)
+        observation_t = from_numpy(observation["observation"]).float().permute(2, 0, 1).to(self.device)
+        observation_t = observation_t.unsqueeze(0)
+        return observation_t
 
     def reset(self) -> Tensor:
         self.env.reset()
