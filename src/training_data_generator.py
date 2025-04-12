@@ -61,11 +61,8 @@ class TrainingDataGenerator:
             repr_net (RepresentationNetwork): Representation network for converting obs -> latent.
             dyn_net (DynamicsNetwork): Dynamics network for MCTS expansions.
             pred_net (PredictionNetwork): Prediction network for MCTS value/policy.
-            config (dict): Must contain at least:
-                - num_episodes: int
-                - max_steps: int (or some max steps per episode)
-                - max_time_mcts: float (seconds for MCTS if using time-based termination)
-                - look_back: int (unused in this example, you can incorporate if needed)
+            config (TrainingDataGeneratorConfig): Configuration for the data generator.
+            device (str): Device to run the networks on (e.g., "cpu" or "cuda").
         """
         self.env = env
         self.repr_net = repr_net
@@ -75,7 +72,6 @@ class TrainingDataGenerator:
 
         self.num_episodes: int = config.num_episodes  # N_e
         self.max_steps: int = config.max_steps_per_episode  # N_es
-        self.total_time: float = config.total_time  # Not used below, but available
         self.mcts: MCTS = create_mcts(
             dynamics_network=dyn_net,
             prediction_network=pred_net,
@@ -117,10 +113,7 @@ class TrainingDataGenerator:
                 latent_state = self.repr_net(state)
 
                 # Run MCTS to get policy distribution (tree_policy) and value estimate.
-                root = Node(
-                    latent_state=latent_state,
-                    to_play=0,  # or the correct current player ID
-                )
+                root = Node(latent_state=latent_state, to_play=self.env.get_to_play())
                 tree_policy, value = self.mcts.run(root)
 
                 policy_tensor = Tensor(tree_policy).to(self.device)

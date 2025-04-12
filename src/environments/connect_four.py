@@ -21,6 +21,10 @@ class ConnectFour(Environment):
         self.env.reset(seed=config.seed)
         self.observation_space = self.env.observation_space("player_0")
         self.device = device
+        self.to_play = self.env.agent_selection
+
+    def get_to_play(self) -> int:
+        return self.to_play
 
     def get_action_space(self) -> tuple[int, ...]:
         space: Box = self.observation_space["action_mask"]
@@ -35,6 +39,8 @@ class ConnectFour(Environment):
 
     def step(self, action: int) -> tuple[Tensor, float, bool]:
         self.env.step(action)
+        self.to_play = self.env.agent_selection
+
         observation, reward, termination, _, _ = self.env.last()
         observation_t = from_numpy(observation["observation"]).to(self.device)
         observation_t = observation_t.float().permute(2, 0, 1)
@@ -44,22 +50,14 @@ class ConnectFour(Environment):
 
     def get_state(self) -> Tensor:
         observation = self.env.last()[0]
-        return (
-            from_numpy(observation["observation"])
-            .float()
-            .permute(2, 0, 1)
-            .to(self.device)
-        )
+        return from_numpy(observation["observation"]).float().permute(2, 0, 1).to(self.device)
 
     def reset(self) -> Tensor:
         self.env.reset()
+        self.to_play = self.env.agent_selection
+
         observation = self.env.last()[0]
-        obs_t = (
-            from_numpy(observation["observation"])
-            .float()
-            .permute(2, 0, 1)
-            .to(self.device)
-        )
+        obs_t = from_numpy(observation["observation"]).float().permute(2, 0, 1).to(self.device)
         obs_t = obs_t.unsqueeze(0)
         return obs_t
 

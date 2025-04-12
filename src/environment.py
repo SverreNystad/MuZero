@@ -18,6 +18,12 @@ class Environment(Protocol):
     - close(): Cleans up resources used by the environment.
     """
 
+    def get_to_play(self) -> int:
+        """
+        Get the current player (agent) to play.
+        """
+        ...
+
     def get_action_space(self) -> tuple[int, ...]:
         """
         The action space of the environment.
