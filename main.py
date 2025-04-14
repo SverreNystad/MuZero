@@ -37,6 +37,7 @@ def generate_training_data(
     pred_net: PredictionNetwork | None,
     config: Configuration,
     device: DeviceLikeType = "cpu",
+    training_steps: int = 0,
 ) -> None:
     """
     Generate training data for the training loop.
@@ -55,7 +56,7 @@ def generate_training_data(
     )
 
     # Generate the training data.
-    episodes = training_data_generator.generate_training_data()
+    episodes = training_data_generator.generate_training_data(training_steps)
 
     # Save the training data.
     path = save_training_data(episodes)

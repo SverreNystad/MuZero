@@ -90,6 +90,9 @@ class TrainingDataGeneratorConfig(BaseModel):
     max_steps_per_episode: int
     total_time: int
     mcts: MCTSConfig
+    # Epsilon greedy action selection aka (exploration)
+    epsilon: float
+    epsilon_decay: float
 
 
 class TrainingConfig(BaseModel):

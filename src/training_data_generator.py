@@ -1,9 +1,11 @@
 import os
 import pickle
+import random
 import time
 from dataclasses import dataclass
 from typing import cast
 
+import numpy
 from torch import Tensor
 from tqdm import trange
 
@@ -79,6 +81,8 @@ class TrainingDataGenerator:
             config=config.mcts,
             device=device,
         )
+        self.epsilon: float = config.epsilon
+        self.epsilon_decay: float = config.epsilon_decay
 
     def _make_actions_tensor(self, env: Environment) -> Tensor:
         """
@@ -92,7 +96,7 @@ class TrainingDataGenerator:
         # If your environment's action space is already a tuple or list, etc.
         return Tensor(action_space).long().to(self.device)
 
-    def generate_training_data(self) -> list[Episode]:
+    def generate_training_data(self, training_steps: int = 0) -> list[Episode]:
         """
         Collect data by playing episodes with MCTS + neural networks.
         Returns:
@@ -102,10 +106,8 @@ class TrainingDataGenerator:
 
         for _ in trange(self.num_episodes, desc="Generating Episodes"):
             self.env.reset()
-            # If your environment is multi-player, you might also reset `player_id` or handle it differently.
-
             epidata = Episode(chunks=[])
-            state = self.env.get_state()  # Shape depends on your environment.
+            state = self.env.get_state()
 
             for _ in trange(self.max_steps, desc="Steps per Episode", leave=False):
                 # Convert the environment's state to a latent representation
@@ -119,17 +121,17 @@ class TrainingDataGenerator:
                 policy_tensor = Tensor(tree_policy).to(self.device)
 
                 # Choose the best action by maximum probability in `tree_policy`.
-                best_action = int(policy_tensor.argmax().item())
+                best_action = self._select_action(policy_tensor, training_steps)
 
                 next_state, next_reward, done = self.env.step(best_action)
 
                 # Store the chunk data in the episode
                 chunk = Chunk(
                     state=state,
-                    policy=policy_tensor,
-                    reward=next_reward,
                     value=value,
+                    policy=policy_tensor,
                     best_action=best_action,
+                    reward=next_reward,
                 )
                 epidata.chunks.append(chunk)
 
@@ -141,6 +143,29 @@ class TrainingDataGenerator:
             episode_history.append(epidata)
 
         return episode_history
+
+    def _select_action(self, policy: Tensor, training_steps: int) -> int:
+        """
+        Select an action using an epsilon-greedy strategy with decayed epsilon.
+        """
+
+        # Compute decayed epsilon, ensuring it does not fall below epsilon_end.
+        epsilon = self._calculate_epsilon(training_steps)
+
+        # With probability epsilon choose a random action, otherwise choose the greedy action.
+        action: int
+        if random.random() < epsilon:
+            action = numpy.random.choice(policy.shape[0])
+        else:
+            # Choose the action with the highest visit count.
+            action = int(policy.argmax().item())
+        return action
+
+    def _calculate_epsilon(self, training_steps: int) -> float:
+        """
+        Calculate the decayed epsilon value based on the number of training steps.
+        """
+        return max(self.epsilon * (self.epsilon_decay**training_steps), 0.0001)
 
 
 DATA_FOLDER = "data/"
