@@ -28,9 +28,12 @@ class ReplayBuffer:
 
     def sample_batch(self) -> list[Episode]:
         """
-        Samples a batch of episodes from the buffer.
+        Samples a batch of episodes from the replay buffer.
+        If the buffer has fewer episodes than the batch size,
+        it samples all available episodes.
 
         Returns:
             list[Episode]: A list of sampled episodes.
         """
-        return random.sample(self.episode_buffer, self.batch_size)
+        k = min(self.batch_size, len(self.episode_buffer))
+        return random.sample(self.episode_buffer, k)
