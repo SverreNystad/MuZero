@@ -9,6 +9,7 @@ from src.neural_networks.neural_network import (
     PredictionNetwork,
     RepresentationNetwork,
 )
+from src.replay_buffer import ReplayBuffer
 from src.training import NeuralNetworkManager
 from src.training_data_generator import Chunk, Episode
 from tests.nerual_networks.test_networks import (
@@ -37,6 +38,7 @@ def minimal_config():
     return TrainingConfig(
         look_back=0,
         batch_size=3,
+        replay_buffer_size=1000,
         roll_ahead=1,
         learning_rate=1e-3,
         betas=(0.9, 0.999),
@@ -116,7 +118,9 @@ def test_single_update(minimal_config, minimal_nets):
     episode_history = [ep]
 
     # Run exactly one update
-    manager.train(episode_history)
+    replay_buffer = ReplayBuffer(minimal_config.replay_buffer_size, minimal_config.batch_size)
+    replay_buffer.add_episodes(episode_history)
+    manager.train(replay_buffer)
 
     # Check that at least some gradients were computed.
     for param in manager.repr_net.parameters():
@@ -153,8 +157,10 @@ def test_multiple_updates(minimal_config, minimal_nets):
     ep = Episode(chunks=[s0, s1])
     episode_history = [ep, ep]
 
+    replay_buffer = ReplayBuffer(minimal_config.replay_buffer_size, minimal_config.batch_size)
+    replay_buffer.add_episodes(episode_history)
     # Perform 5 BPTT updates
-    manager.train(episode_history)
+    manager.train(replay_buffer)
 
     # Verify that the prediction network parameters are still accessible (i.e. not None)
     for param in manager.pred_net.parameters():
@@ -183,8 +189,11 @@ def test_no_valid_rollout(minimal_config, minimal_nets):
     )
     ep = Episode(chunks=[state0])
 
+    episode_history = [ep]
+    replay_buffer = ReplayBuffer(minimal_config.replay_buffer_size, minimal_config.batch_size)
+    replay_buffer.add_episodes(episode_history)
     # Run training; it should handle the case gracefully
-    manager.train([ep])
+    manager.train(replay_buffer)
 
 
 @pytest.mark.parametrize(
@@ -215,6 +224,7 @@ def test_training_various_configs(look_back, batch_size, roll_ahead, epochs, mbs
         betas=(0.9, 0.999),
         epochs=epochs,
         mini_batch_size=mbs,
+        replay_buffer_size=1000,
     )
     manager = NeuralNetworkManager(
         config=config,
@@ -237,8 +247,9 @@ def test_training_various_configs(look_back, batch_size, roll_ahead, epochs, mbs
         chunks.append(chunk)
     ep = Episode(chunks=chunks)
     episode_history = [ep]
-
-    manager.train(episode_history)
+    replay_buffer = ReplayBuffer(config.replay_buffer_size, config.batch_size)
+    replay_buffer.add_episodes(episode_history)
+    manager.train(replay_buffer)
 
     # Check that the prediction network's parameters are still accessible.
     for param in manager.pred_net.parameters():
@@ -276,8 +287,9 @@ def test_training_with_varied_episode_counts(minimal_config, minimal_nets, num_e
         )
         ep = Episode(chunks=[s0, s1])
         episode_history.append(ep)
-
-    manager.train(episode_history)
+    replay_buffer = ReplayBuffer(minimal_config.replay_buffer_size, minimal_config.batch_size)
+    replay_buffer.add_episodes(episode_history)
+    manager.train(replay_buffer)
 
     for param in manager.pred_net.parameters():
         assert param is not None
