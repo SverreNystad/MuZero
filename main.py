@@ -128,7 +128,7 @@ def generate_train_model_loop(
         total_reward = 0
         k = 3
         for _ in range(k):
-            simulation_video_path = f"simulation_{i}.mp4"
+            simulation_video_path = f"training_runs/simulation_{i}.mp4"
             total_reward += model_simulation(
                 env,
                 repr_net=repr_net,
