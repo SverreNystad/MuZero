@@ -56,6 +56,8 @@ def test_generate_training_data_gives_episode_data(car_racing_env):
         roll_ahead=3,
         total_time=10,
         mcts=mcts_config,
+        epsilon=1.0,
+        epsilon_decay=0.99,
     )
 
     generator = TrainingDataGenerator(
