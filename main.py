@@ -137,7 +137,7 @@ def generate_train_model_loop(
                 human_mode=False,
                 video_path=simulation_video_path,
             )
-        wandb.log({"reward": total_reward / k})
+        wandb.log({"reward": total_reward / k, "full_loop_iteration": i})
         if i % 10 == 0:
             wandb.log({f"Simulation_{i}": wandb.Video(simulation_video_path, caption=f"Simulation of model {i}")})
 
