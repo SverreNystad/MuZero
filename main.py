@@ -58,6 +58,11 @@ def generate_training_data(
     # Generate the training data.
     episodes = training_data_generator.generate_training_data(training_steps)
 
+    wandb.log(
+        {
+            "epsilon": training_data_generator._calculate_epsilon(training_steps),
+        }
+    )
     # Save the training data.
     path = save_training_data(episodes)
     print(f"Training data saved to {path}")
