@@ -21,20 +21,16 @@ from src.neural_networks.neural_network import (
     PredictionNetwork,
     RepresentationNetwork,
 )
+from src.replay_buffer import ReplayBuffer
 from src.training import NeuralNetworkManager
-from src.training_data_generator import (
-    TrainingDataGenerator,
-    delete_all_training_data,
-    load_all_training_data,
-    save_training_data,
-)
+from src.training_data_generator import TrainingDataGenerator, save_training_data
 
 
 @torch.no_grad()
 def generate_training_data(
-    repr_net: RepresentationNetwork | None,
-    dyn_net: DynamicsNetwork | None,
-    pred_net: PredictionNetwork | None,
+    repr_net: RepresentationNetwork,
+    dyn_net: DynamicsNetwork,
+    pred_net: PredictionNetwork,
     config: Configuration,
     device: DeviceLikeType = "cpu",
     training_steps: int = 0,
@@ -69,22 +65,20 @@ def generate_training_data(
 
 
 def train_model(
-    repr_net: RepresentationNetwork | None,
-    dyn_net: DynamicsNetwork | None,
-    pred_net: PredictionNetwork | None,
+    repr_net: RepresentationNetwork,
+    dyn_net: DynamicsNetwork,
+    pred_net: PredictionNetwork,
     config: Configuration,
+    replay_buffer: ReplayBuffer,
     device: DeviceLikeType = "cpu",
 ) -> tuple[RepresentationNetwork, DynamicsNetwork, PredictionNetwork]:
     """
     Train the model using the training data.
     """
-    # load episodes
-    episodes = load_all_training_data()
 
     nnm = NeuralNetworkManager(config.training, repr_net, dyn_net, pred_net, device)
 
-    # train using episodes
-    final_loss = nnm.train(episodes)
+    final_loss = nnm.train(replay_buffer)
     return nnm.save_models(final_loss, config.environment, False)
 
 
@@ -117,12 +111,11 @@ def generate_train_model_loop(
     wandb.watch(repr_net, log="all")
     wandb.watch(dyn_net, log="all")
     wandb.watch(pred_net, log="all")
-
+    replay_buffer = ReplayBuffer(config.replay_buffer_size, config.training.batch_size)
     for i in trange(n):
-        generate_training_data(repr_net, dyn_net, pred_net, config, device)
+        episodes = generate_training_data(repr_net, dyn_net, pred_net, config, device)
+        replay_buffer.add_episodes(episodes)
         repr_net, dyn_net, pred_net = train_model(repr_net, dyn_net, pred_net, config, device)
-        # As better models create better training data, we can delete the old training data.
-        delete_all_training_data()
 
         # Check performance of the model.
         total_reward = 0

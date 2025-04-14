@@ -98,6 +98,7 @@ class TrainingDataGeneratorConfig(BaseModel):
 class TrainingConfig(BaseModel):
     learning_rate: float
     batch_size: int
+    replay_buffer_size: int
     epochs: int
     betas: tuple[float, float]
     roll_ahead: int

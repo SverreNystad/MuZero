@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torch import Tensor
-from tqdm import trange
 
 import wandb
 from src.config.config_loader import EnvironmentConfig, TrainingConfig
@@ -16,6 +15,7 @@ from src.neural_networks.neural_network import (
     PredictionNetwork,
     RepresentationNetwork,
 )
+from src.replay_buffer import ReplayBuffer
 from src.training_data_generator import Episode
 
 FOLDER_REGEX = re.compile(r"^(\d+)_(\d{8}_\d{6})$")
@@ -53,62 +53,55 @@ class NeuralNetworkManager:
 
         self.device = device
 
-    def train(self, episode_history: list[Episode]):
+    def train(self, replay_buffer: ReplayBuffer) -> float:
         """
         Train MuZero's neural networks using Backpropagation Through Time (BPTT).
         After training, automatically saves the model in /models/<counter>_<datetime>/,
         where <counter> is the next available integer after scanning existing folders.
         """
-        batch_size = self.config.batch_size  # e.g. 128
-        epochs = self.config.epochs  # e.g. 10
-        episode_history = self._filter_for_valid_episodes(episode_history)
-        total_steps = len(episode_history)  # total episodes
         batch_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
 
-        for epoch in trange(epochs):
-            # Shuffle the data each epoch for more robust training
-            random.shuffle(episode_history)
+        for mb in range(self.mbs):
+            current_batch: list[Episode] = replay_buffer.sample_batch()
+            # Filter out episodes that are too short for training
+            current_batch = self._filter_for_valid_episodes(current_batch)
+            # Shuffle the mini-batch to make training more robust
+            random.shuffle(current_batch)
 
-            # Iterate over the dataset in mini-batches
-            # We'll chunk the entire list into [0:batch_size], [batch_size:2*batch_size], etc.
-            for start_idx in range(0, total_steps, batch_size):
-                end_idx = min(start_idx + batch_size, total_steps)
-                current_batch = episode_history[start_idx:end_idx]
+            # We'll accumulate the total loss across all episodes in this mini-batch
+            batch_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
+            self.optimizer.zero_grad()
 
-                # We'll accumulate the total loss across all episodes in this mini-batch
-                batch_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
-                self.optimizer.zero_grad()
+            for episode in current_batch:
+                # Sample a valid starting index for unrolling from this particular episode
+                max_k = len(episode.chunks) - (self.roll_ahead + 1)
+                if max_k < 0:
+                    # Not enough steps to do roll_ahead; skip
+                    continue
 
-                for episode in current_batch:
-                    # Sample a valid starting index for unrolling from this particular episode
-                    max_k = len(episode.chunks) - (self.roll_ahead + 1)
-                    if max_k < 0:
-                        # Not enough steps to do roll_ahead; skip
-                        continue
+                k = random.randrange(max_k + 1)
+                start_roll_idx = max(0, k - self.lookback)
 
-                    k = random.randrange(max_k + 1)
-                    start_roll_idx = max(0, k - self.lookback)
+                # Gather data from the chosen segment
+                Sb_k = [episode.chunks[i].state for i in range(start_roll_idx, k + 1)]
+                Ab_k = [episode.chunks[i].best_action for i in range(k, k + self.roll_ahead)]
+                Pb_k = [episode.chunks[i].policy for i in range(k, k + self.roll_ahead + 1)]
+                Vb_k = [episode.chunks[i].value for i in range(k, k + self.roll_ahead + 1)]
+                Rb_k = [episode.chunks[i + 1].reward for i in range(k, k + self.roll_ahead)]
 
-                    # Gather data from the chosen segment
-                    Sb_k = [episode.chunks[i].state for i in range(start_roll_idx, k + 1)]
-                    Ab_k = [episode.chunks[i].best_action for i in range(k, k + self.roll_ahead)]
-                    Pb_k = [episode.chunks[i].policy for i in range(k, k + self.roll_ahead + 1)]
-                    Vb_k = [episode.chunks[i].value for i in range(k, k + self.roll_ahead + 1)]
-                    Rb_k = [episode.chunks[i + 1].reward for i in range(k, k + self.roll_ahead)]
+                # Compute loss for this chunk
+                step_loss = self.bptt(Sb_k, Ab_k, (Pb_k, Vb_k, Rb_k))
+                batch_loss += step_loss
 
-                    # Compute loss for this chunk
-                    step_loss = self.bptt(Sb_k, Ab_k, (Pb_k, Vb_k, Rb_k))
-                    batch_loss += step_loss
-
-                # Average loss across the mini-batch
-                effective_batch_size = len(current_batch)
-                if effective_batch_size > 0:
-                    batch_loss = batch_loss / effective_batch_size
-                    # Now do a single backward pass for the entire mini-batch
-                    batch_loss.backward()
-                    self.optimizer.step()
-                    self.loss_history.append(batch_loss.item())
-                    wandb.log({"batch_loss": batch_loss.item()})
+            # Average loss across the mini-batch
+            effective_batch_size = len(current_batch)
+            if effective_batch_size > 0:
+                batch_loss = batch_loss / effective_batch_size
+                # Now do a single backward pass for the entire mini-batch
+                batch_loss.backward()
+                self.optimizer.step()
+                self.loss_history.append(batch_loss.item())
+                wandb.log({"batch_loss": batch_loss.item()})
 
         return batch_loss.item()
 
