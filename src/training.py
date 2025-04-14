@@ -108,7 +108,7 @@ class NeuralNetworkManager:
                     batch_loss.backward()
                     self.optimizer.step()
                     self.loss_history.append(batch_loss.item())
-                    wandb.log({"loss": batch_loss.item()})
+                    wandb.log({"batch_loss": batch_loss.item()})
 
         return batch_loss.item()
 
@@ -225,6 +225,13 @@ class NeuralNetworkManager:
         if reward is not None and len(Rb_k) > 0:
             target_reward = Rb_k[0]
             reward_loss_val = self.reward_loss(target_reward, reward[0])
+        wandb.log(
+            {
+                "policy_loss": policy_loss_val.item(),
+                "value_loss": value_loss_val.item(),
+                "reward_loss": reward_loss_val.item(),
+            }
+        )
         return policy_loss_val + value_loss_val + reward_loss_val
 
     def reward_loss(self, target_reward: Tensor, pred_reward: Tensor) -> Tensor:
