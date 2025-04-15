@@ -13,6 +13,7 @@ def model_simulation(
     human_mode: bool = True,
     video_path: str = "simulation.mp4",
 ) -> float:
+    print("Starting model simulation...")
     env.reset()
     if human_mode:
         env.env.render_mode = "human"
@@ -46,6 +47,9 @@ def model_simulation(
             return running_reward
 
     # Save the frames as a GIF.
-    imageio.mimsave(video_path, frames, fps=30)
+    # Note: need to set the macro_block_size to None to avoid a warning.
+    print(f"Saving video to {video_path}...")
+    kargs = {"macro_block_size": None, "ffmpeg_params": ["-s", "600x400"]}
+    imageio.mimsave(video_path, frames, fps=30, **kargs)
 
     return running_reward
