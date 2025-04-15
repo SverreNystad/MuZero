@@ -1,3 +1,6 @@
+[tool.black]
+line-length = 128
+
 [tool.ruff]
 line-length = 128
 
