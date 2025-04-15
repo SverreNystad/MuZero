@@ -17,7 +17,7 @@ training_data_generator:
       selection_strategy: "puct"          # can be "uct" or "puct"
       max_iterations: 50                       # maximum iterations (set to 0 if using time-based termination)
       max_time: 100.0                      # maximum search time per move (in seconds)
-      depth: 1
+      model_look_ahead: 1
       discount_factor: 0.998
 
 

@@ -37,7 +37,7 @@ def create_mcts(
             selection_strategy = PUCT()
 
     # Create simulation and backpropagation strategies.
-    simulation_strategy = MuZeroSimulation(dynamics_network, prediction_network, config.depth, device)
+    simulation_strategy = MuZeroSimulation(dynamics_network, prediction_network, config.model_look_ahead, device)
     backpropagation_strategy = Backpropagation(config.discount_factor)
 
     # Instantiate the MCTS object with the given strategies.
