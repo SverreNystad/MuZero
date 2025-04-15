@@ -95,15 +95,23 @@ class TrainingDataGeneratorConfig(BaseModel):
     epsilon_decay: float
 
 
+class ValidationConfig(BaseModel):
+    video_upload_interval: int
+    simulation_count: int
+    simulation_depth: int
+
+
 class TrainingConfig(BaseModel):
     learning_rate: float
     batch_size: int
     replay_buffer_size: int
+    alpha: float  # priority exponent
     epochs: int
     betas: tuple[float, float]
     roll_ahead: int
     look_back: int
     mini_batch_size: int
+    validation: ValidationConfig
 
 
 class RunTimeConfig(BaseModel):

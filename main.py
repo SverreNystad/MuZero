@@ -107,7 +107,7 @@ def generate_train_model_loop(
     wandb.watch(repr_net, log="all")
     wandb.watch(dyn_net, log="all")
     wandb.watch(pred_net, log="all")
-    replay_buffer = ReplayBuffer(config.training.replay_buffer_size, config.training.batch_size)
+    replay_buffer = ReplayBuffer(config.training.replay_buffer_size, config.training.batch_size, config.training.alpha)
     for i in trange(n):
         episodes = generate_training_data(repr_net, dyn_net, pred_net, config, device, i, False)
         replay_buffer.add_episodes(episodes)
@@ -116,19 +116,19 @@ def generate_train_model_loop(
 
         # Check performance of the model.
         total_reward = 0
-        k = 3
-        for _ in range(k):
+        val_simulation_count = config.training.validation.simulation_count
+        for _ in range(val_simulation_count):
             simulation_video_path = f"training_runs/simulation_{i}.mp4"
             total_reward += model_simulation(
                 env,
                 repr_net=repr_net,
                 pred_net=pred_net,
-                inference_simulation_depth=300,
+                inference_simulation_depth=config.training.validation.simulation_depth,
                 human_mode=False,
                 video_path=simulation_video_path,
             )
-        wandb.log({"reward": total_reward / k, "full_loop_iteration": i})
-        if i % 10 == 0:
+        wandb.log({"reward": total_reward / val_simulation_count, "full_loop_iteration": i})
+        if i % config.training.validation.video_upload_interval == 0:
             wandb.log({f"Simulation_{i}": wandb.Video(simulation_video_path, caption=f"Simulation of model {i}")})
 
     return repr_net, dyn_net, pred_net
