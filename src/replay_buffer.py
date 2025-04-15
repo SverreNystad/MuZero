@@ -1,4 +1,5 @@
 import numpy as np
+import ray
 
 from src.training_data_generator import Episode
 
@@ -6,6 +7,7 @@ from src.training_data_generator import Episode
 np.random.seed(0)
 
 
+@ray.remote
 class ReplayBuffer:
     def __init__(self, buffer_size: int, batch_size: int, alpha=0.6):
         """

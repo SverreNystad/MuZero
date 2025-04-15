@@ -4,6 +4,7 @@ import random
 import re
 
 import matplotlib.pyplot as plt
+import ray
 import torch
 import torch.nn.functional as F
 from torch import Tensor
@@ -66,7 +67,8 @@ class NeuralNetworkManager:
         batch_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
 
         for mb in trange(self.mbs):
-            current_batch, indices = replay_buffer.sample_batch()
+            ref = replay_buffer.sample_batch.remote()
+            current_batch, indices = ray.get(ref)
 
             current_batch = self._filter_for_valid_episodes(current_batch)
 
@@ -117,7 +119,7 @@ class NeuralNetworkManager:
                 wandb.log({"batch_loss": batch_loss.item()})
 
                 # Update replay buffer priorities
-                replay_buffer.update_priorities(ep_indices_used, errors_for_priorities)
+                replay_buffer.update_priorities.remote(ep_indices_used, errors_for_priorities)
 
         return batch_loss.item()
 
