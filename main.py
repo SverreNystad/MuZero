@@ -1,23 +1,39 @@
-import os
-from collections.abc import Callable
+import random
 
+import numpy as np
 import torch
-from dotenv import load_dotenv
-from torch._prims_common import DeviceLikeType
-from tqdm import trange
 
-import wandb
-from src.config.config_loader import Configuration, load_config
-from src.environments.factory import create_environment
-from src.inference import model_simulation
-from src.neural_networks.neural_network import (
+SEED = 0
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+torch.cuda.manual_seed_all(SEED)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
+import os  # noqa: E402
+from collections.abc import Callable  # noqa: E402
+
+import torch  # noqa: E402
+from dotenv import load_dotenv  # noqa: E402
+from torch._prims_common import DeviceLikeType  # noqa: E402
+from tqdm import trange  # noqa: E402
+
+import wandb  # noqa: E402
+from src.config.config_loader import Configuration, load_config  # noqa: E402
+from src.environments.factory import create_environment  # noqa: E402
+from src.inference import model_simulation  # noqa: E402
+from src.neural_networks.neural_network import (  # noqa: E402
     DynamicsNetwork,
     PredictionNetwork,
     RepresentationNetwork,
 )
-from src.replay_buffer import ReplayBuffer
-from src.training import NeuralNetworkManager
-from src.training_data_generator import TrainingDataGenerator, save_training_data
+from src.replay_buffer import ReplayBuffer  # noqa: E402
+from src.training import NeuralNetworkManager  # noqa: E402
+from src.training_data_generator import (  # noqa: E402
+    TrainingDataGenerator,
+    save_training_data,
+)
 
 
 @torch.no_grad()
