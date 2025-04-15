@@ -34,10 +34,10 @@ training:
   roll_ahead: 5
   mini_batch_size: 256
 
-  validation:
-    video_upload_interval: 10
-    simulation_count: 3
-    simulation_depth: 300
+validation:
+  video_upload_interval: 10
+  simulation_count: 3
+  simulation_depth: 300
 
 # Neural network configurations
 networks:

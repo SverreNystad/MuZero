@@ -132,19 +132,19 @@ def generate_train_model_loop(
 
         # Check performance of the model.
         total_reward = 0
-        val_simulation_count = config.training.validation.simulation_count
+        val_simulation_count = config.validation.simulation_count
         for _ in range(val_simulation_count):
             simulation_video_path = f"training_runs/simulation_{i}.mp4"
             total_reward += model_simulation(
                 env,
                 repr_net=repr_net,
                 pred_net=pred_net,
-                inference_simulation_depth=config.training.validation.simulation_depth,
+                inference_simulation_depth=config.validation.simulation_depth,
                 human_mode=False,
                 video_path=simulation_video_path,
             )
         wandb.log({"reward": total_reward / val_simulation_count, "full_loop_iteration": i})
-        if i % config.training.validation.video_upload_interval == 0:
+        if i % config.validation.video_upload_interval == 0:
             wandb.log({f"Simulation_{i}": wandb.Video(simulation_video_path, caption=f"Simulation of model {i}")})
 
     return repr_net, dyn_net, pred_net

@@ -111,7 +111,6 @@ class TrainingConfig(BaseModel):
     roll_ahead: int
     look_back: int
     mini_batch_size: int
-    validation: ValidationConfig
 
 
 class RunTimeConfig(BaseModel):
@@ -123,6 +122,7 @@ class Configuration(BaseModel):
     networks: NetworksConfig
     training_data_generator: TrainingDataGeneratorConfig
     training: TrainingConfig
+    validation: ValidationConfig
     runtime: RunTimeConfig
 
 

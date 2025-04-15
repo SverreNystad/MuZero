@@ -42,6 +42,7 @@ def minimal_config():
         roll_ahead=1,
         learning_rate=1e-3,
         betas=(0.9, 0.999),
+        alpha=0.6,
         epochs=1,
         mini_batch_size=2,
     )
@@ -222,6 +223,7 @@ def test_training_various_configs(look_back, batch_size, roll_ahead, epochs, mbs
         roll_ahead=roll_ahead,
         learning_rate=1e-3,
         betas=(0.9, 0.999),
+        alpha=0.6,
         epochs=epochs,
         mini_batch_size=mbs,
         replay_buffer_size=1000,
