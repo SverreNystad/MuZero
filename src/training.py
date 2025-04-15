@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torch import Tensor
+from tqdm import trange
 
 import wandb
 from src.config.config_loader import EnvironmentConfig, TrainingConfig
@@ -20,6 +21,9 @@ from src.training_data_generator import Episode
 
 FOLDER_REGEX = re.compile(r"^(\d+)_(\d{8}_\d{6})$")
 BASE_PATH = "training_runs"
+
+# Set the random seed for reproducibility
+random.seed(0)
 
 
 class NeuralNetworkManager:
@@ -61,19 +65,23 @@ class NeuralNetworkManager:
         """
         batch_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
 
-        for mb in range(self.mbs):
-            current_batch: list[Episode] = replay_buffer.sample_batch()
-            # Filter out episodes that are too short for training
+        for mb in trange(self.mbs):
+            current_batch, indices = replay_buffer.sample_batch()
+
             current_batch = self._filter_for_valid_episodes(current_batch)
-            # Shuffle the mini-batch to make training more robust
-            random.shuffle(current_batch)
 
-            # We'll accumulate the total loss across all episodes in this mini-batch
-            batch_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
             self.optimizer.zero_grad()
+            # We'll keep track of each episode's "priority error"
+            errors_for_priorities = []
+            ep_indices_used = []
 
-            for episode in current_batch:
-                # Sample a valid starting index for unrolling from this particular episode
+            batch_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
+
+            for local_idx, episode in enumerate(current_batch):
+                # local_idx is the index within the mini-batch,
+                # but we also want the "global" index from 'indices' we got from the buffer.
+                global_idx = indices[local_idx]
+
                 max_k = len(episode.chunks) - (self.roll_ahead + 1)
                 if max_k < 0:
                     # Not enough steps to do roll_ahead; skip
@@ -93,6 +101,11 @@ class NeuralNetworkManager:
                 step_loss = self.bptt(Sb_k, Ab_k, (Pb_k, Vb_k, Rb_k))
                 batch_loss += step_loss
 
+                # Convert step_loss to float for priority
+                priority_err = step_loss.detach().abs().item()
+                errors_for_priorities.append(priority_err)
+                ep_indices_used.append(global_idx)
+
             # Average loss across the mini-batch
             effective_batch_size = len(current_batch)
             if effective_batch_size > 0:
@@ -102,6 +115,9 @@ class NeuralNetworkManager:
                 self.optimizer.step()
                 self.loss_history.append(batch_loss.item())
                 wandb.log({"batch_loss": batch_loss.item()})
+
+                # Update replay buffer priorities
+                replay_buffer.update_priorities(ep_indices_used, errors_for_priorities)
 
         return batch_loss.item()
 
