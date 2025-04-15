@@ -2,6 +2,9 @@ import numpy as np
 
 from src.training_data_generator import Episode
 
+# Set the random seed for reproducibility
+np.random.seed(0)
+
 
 class ReplayBuffer:
     def __init__(self, buffer_size: int, batch_size: int, alpha=0.6):

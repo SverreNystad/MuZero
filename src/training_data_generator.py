@@ -20,6 +20,9 @@ from src.search.factory import create_mcts
 from src.search.mcts import MCTS
 from src.search.nodes import Node
 
+# Set the random seed for reproducibility
+random.seed(0)
+
 
 @dataclass
 class Chunk:
