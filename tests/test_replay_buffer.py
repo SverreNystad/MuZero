@@ -77,8 +77,10 @@ def test_adding_more_games_then_window_size():
     buffer.add_episodes([episode1, episode2])
 
     # Check if the buffer has only the last episode
-    assert len(buffer.episode_buffer) == 1
-    assert buffer.episode_buffer[0] == episode2
+    assert len(buffer) == 1
+    batch, indices = buffer.sample_batch()
+    assert len(batch) == 1
+    assert batch[0] == episode2
 
 
 def test_sample_batch_from_replay_buffer():
@@ -114,7 +116,7 @@ def test_sample_batch_from_replay_buffer():
     buffer.add_episodes([episode1, episode2])
 
     # Sample a batch from the buffer
-    batch = buffer.sample_batch()
+    batch, indices = buffer.sample_batch()
 
     # Check if the batch size is correct
     assert len(batch) == batch_size
@@ -154,7 +156,7 @@ def test_sample_batch_with_less_than_batch_size():
     buffer.add_episodes(episode_history)
 
     # Sample a batch from the buffer
-    batch = buffer.sample_batch()
+    batch, indices = buffer.sample_batch()
 
     # Check if the batch size is correct
     assert len(batch) == len(episode_history)
@@ -167,7 +169,7 @@ def test_sample_batch_with_no_episodes():
     buffer = ReplayBuffer(buffer_size, batch_size)
 
     # Sample a batch from the empty buffer
-    batch = buffer.sample_batch()
+    batch, indices = buffer.sample_batch()
 
     # Check if the batch is empty
     assert len(batch) == 0
