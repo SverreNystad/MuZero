@@ -265,6 +265,7 @@ class NeuralNetworkManager:
         final_loss_val: float = 0.0,
         env_config: EnvironmentConfig = None,
         show_plot: bool = True,
+        shall_upload: bool = False,
     ) -> tuple[RepresentationNetwork, DynamicsNetwork, PredictionNetwork]:
         """
         Save the neural networks to disk in /models/<counter>_<datetime>/.
@@ -281,6 +282,11 @@ class NeuralNetworkManager:
         torch.save(self.repr_net.state_dict(), os.path.join(model_path, "repr.pth"))
         torch.save(self.dyn_net.state_dict(), os.path.join(model_path, "dyn.pth"))
         torch.save(self.pred_net.state_dict(), os.path.join(model_path, "pred.pth"))
+        if shall_upload:
+            print("Uploading model to wandb...")
+            wandb.save(os.path.join(model_path, "repr.pth"))
+            wandb.save(os.path.join(model_path, "dyn.pth"))
+            wandb.save(os.path.join(model_path, "pred.pth"))
 
         # Write hyperparameters and final loss into a text file
         info_path = os.path.join(BASE_PATH, "info/" + folder_name)

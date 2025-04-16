@@ -90,7 +90,7 @@ def train_model(
     nnm = NeuralNetworkManager(config.training, repr_net, dyn_net, pred_net, device)
 
     final_loss = nnm.train(replay_buffer)
-    return nnm.save_models(final_loss, config.environment, False)
+    return nnm.save_models(final_loss, config.environment, False, True)
 
 
 def generate_train_model_loop(
@@ -119,11 +119,10 @@ def generate_train_model_loop(
         config=config.networks.prediction,
     ).to(device)
 
-    wandb.watch(repr_net, log="all")
-    wandb.watch(dyn_net, log="all")
-    wandb.watch(pred_net, log="all")
+    # wandb.watch(repr_net, log="all")
+    # wandb.watch(dyn_net, log="all")
+    # wandb.watch(pred_net, log="all")
 
-    # remote_generate_training_data = ray.remote(num_cpus=cpus, num_gpus=gpus)(
     # Make generating ray remote
     print(ray.available_resources())
     cpus = ray.available_resources().get("CPU", 1)
@@ -145,14 +144,12 @@ def generate_train_model_loop(
             )
             object_refs.append(object_ref)
         print(f"Waiting for {len(object_refs)} training data to be generated.")
-        # Wait for the training data to be generated.
-        # This is a blocking call.
+        # Wait for the training data to be generated. This is a blocking call. Maybe use wait instead?
         episodes_batches = ray.get(object_refs)
         # Flatten the list of lists.
         episodes = [episode for batch in episodes_batches for episode in batch]
 
         replay_buffer.add_episodes.remote(episodes)
-        # episodes = generate_training_data(repr_net, dyn_net, pred_net, config, device)
         wandb.log(
             {
                 "epsilon": calculate_epsilon(config.training_data_generator, i),
@@ -160,6 +157,7 @@ def generate_train_model_loop(
         )
 
         repr_net, dyn_net, pred_net = train_model(repr_net, dyn_net, pred_net, config, replay_buffer, device)
+
         # Check performance of the model.
         total_reward = 0
         val_simulation_count = config.validation.simulation_count
@@ -216,7 +214,7 @@ if __name__ == "__main__":
     wandb.login(key=WANDB_API_KEY)
     wandb.init(
         project="muzero",
-        mode="disabled",
+        # mode="disabled",
         # Track hyperparameters and run metadata.
         config=config,
     )
