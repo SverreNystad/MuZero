@@ -108,6 +108,7 @@ class DynamicsNetwork(nn.Module):
         latent_shape: tuple[int, int, int],
         num_actions: int,
         config: DynamicsNetworkConfig,
+        is_discrete: bool = True,
     ):
         """
         Args:
@@ -116,12 +117,18 @@ class DynamicsNetwork(nn.Module):
             config: Contains `res_net` (list of ResBlockConfig) and `reward_net` (list of DenseLayerConfig).
         """
         super().__init__()
+        self.discrete = is_discrete
         self.latent_shape = latent_shape
         self.num_actions = num_actions
         c, h, w = latent_shape
 
         # 1) Action embedding: we embed each action into the same dimension as a flattened latent (C*H*W)
-        self.action_embedding = nn.Embedding(num_actions, c * h * w)
+        if self.discrete:
+            # When the action is discrete, we use one-hot encoding followed by a linear layer.
+            self.action_fc = nn.Linear(num_actions, c * h * w)
+        else:
+            # Otherwise, use an embedding layer.
+            self.action_embedding = nn.Embedding(num_actions, c * h * w)
 
         # 2) A small linear layer to merge (latent + action) -> shape (C * H * W)
         #    (We flatten the latent, concatenate the action embedding, then re-project.)
@@ -162,11 +169,17 @@ class DynamicsNetwork(nn.Module):
         # 1) Flatten the current latent
         latent_flat = latent_state.view(B, -1)  # [B, C*H*W]
 
-        # 2) Embed the action
-        action_emb = self.action_embedding(action)  # [B, C*H*W]
+        # 2) Obtain the action representation.
+        if self.discrete:
+            # One-hot encode the action and then project.
+            action_one_hot = F.one_hot(action, num_classes=self.num_actions).float()  # [B, num_actions]
+            action_rep = self.action_fc(action_one_hot)  # [B, C*H*W]
+        else:
+            # Use an embedding layer as before.
+            action_rep = self.action_embedding(action)  # [B, C*H*W]
 
         # 3) Merge latent + action (concatenate) -> [B, 2*C*H*W], then project down
-        merged = torch.cat([latent_flat, action_emb], dim=1)  # [B, 2*C*H*W]
+        merged = torch.cat([latent_flat, action_rep], dim=1)  # [B, 2*C*H*W]
         merged = F.relu(self.fc_merge(merged))  # [B, C*H*W]
 
         # 4) Reshape back to [B, C, H, W] for the residual tower
