@@ -26,6 +26,7 @@ training_data_generator:
 # Training hyperparameters
 training:
   learning_rate: 0.001
+  weight_decay: 0.0001
   epochs: 100
   batch_size: 32
   replay_buffer_size: 40
