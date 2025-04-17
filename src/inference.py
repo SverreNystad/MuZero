@@ -44,7 +44,7 @@ def model_simulation(
 
         # Check if the episode is done.
         if done:
-            return running_reward
+            break
 
     # Save the frames as a GIF.
     # Note: need to set the macro_block_size to None to avoid a warning.
