@@ -1,8 +1,10 @@
+project_name: "car_racing"
+
 runtime:
   use_cuda: true
 # Environment Configuration
 environment:
-  type: "CarRacing"
+  type: "LunarLander"
   seed: 502
   render_mode: "rgb_array"
 
@@ -19,7 +21,6 @@ training_data_generator:
       max_time: 100.0                      # maximum search time per move (in seconds)
       model_look_ahead: 1
       discount_factor: 0.998
-
 
 
 # Training hyperparameters
