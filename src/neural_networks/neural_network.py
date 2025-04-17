@@ -24,8 +24,6 @@ from src.neural_networks.network_builder import (
     build_mlp,
 )
 
-latent_shape: tuple[int, int, int] = (load_config("config.yaml").networks.latent_shape,)
-
 
 class RepresentationNetwork(nn.Module):
     """
