@@ -173,21 +173,19 @@ def _profile_code(func: Callable, *args, **kwargs) -> None:
 
 
 if __name__ == "__main__":
-    config = load_config("config.yaml")
+    config = load_config("config_lunar_lander.yaml")
     load_dotenv()
     WANDB_API_KEY = os.getenv("WANDB_API_KEY")
     wandb.login(key=WANDB_API_KEY)
     wandb.init(
-        project="muzero",
-        mode="disabled",
+        project=config.project_name,
+        #mode="disabled",
         # Track hyperparameters and run metadata.
         config=config,
     )
 
     # _profile_code(generate_training_data)
     # _profile_code(train_model)
-    config_name: str = "config.yaml"
-    config = load_config(config_name)
     generate_train_model_loop(1000, config)
 
     wandb.finish()
