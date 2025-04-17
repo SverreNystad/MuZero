@@ -104,6 +104,7 @@ class ValidationConfig(BaseModel):
 
 class TrainingConfig(BaseModel):
     learning_rate: float
+    weight_decay: float
     batch_size: int
     replay_buffer_size: int
     alpha: float  # priority exponent
@@ -126,6 +127,7 @@ class Configuration(BaseModel):
     validation: ValidationConfig
     runtime: RunTimeConfig
     project_name: str = "muzero"
+
 
 def load_config(filename: str) -> Configuration:
     """

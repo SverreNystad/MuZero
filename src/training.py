@@ -52,6 +52,7 @@ class NeuralNetworkManager:
         self.optimizer = torch.optim.Adam(
             list(self.repr_net.parameters()) + list(self.dyn_net.parameters()) + list(self.pred_net.parameters()),
             lr=config.learning_rate,
+            weight_decay=config.weight_decay,
             betas=config.betas,
         )
 
