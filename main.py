@@ -206,6 +206,9 @@ if __name__ == "__main__":
         address="auto",
         # num_cpus=...,
         # num_gpus=1,
+        runtime_env={
+            "working_dir": ".",
+        },
     )
     print(f"Ray initialized with context: \n{context}")
     config = load_config("config.yaml")
