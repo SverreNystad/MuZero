@@ -46,6 +46,7 @@ def create_mcts(
         simulation=simulation_strategy,
         backpropagation=backpropagation_strategy,
         dynamic_network=dynamics_network,
+        prediction_network=prediction_network,
         actions=actions,
         max_itr=config.max_iterations,
         max_time=config.max_time,

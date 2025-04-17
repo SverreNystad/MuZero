@@ -162,7 +162,8 @@ def generate_train_model_loop(
         total_reward = 0
         val_simulation_count = config.validation.simulation_count
         for _ in range(val_simulation_count):
-            simulation_video_path = f"training_runs/simulation_{i}.mp4"
+            simulation_video_path = f"training_runs/simulation_{i:03}.mp4"
+
             total_reward += model_simulation(
                 env,
                 repr_net=repr_net,
@@ -211,12 +212,12 @@ if __name__ == "__main__":
         },
     )
     print(f"Ray initialized with context: \n{context}")
-    config = load_config("config.yaml")
+    config = load_config("config_lunar_lander.yaml")
     load_dotenv()
     WANDB_API_KEY = os.getenv("WANDB_API_KEY")
     wandb.login(key=WANDB_API_KEY)
     wandb.init(
-        project="muzero",
+        project=f"muzero - {config.project_name}",
         # mode="disabled",
         # Track hyperparameters and run metadata.
         config=config,
@@ -224,8 +225,6 @@ if __name__ == "__main__":
 
     # _profile_code(generate_training_data)
     # _profile_code(train_model)
-    config_name: str = "config.yaml"
-    config = load_config(config_name)
     generate_train_model_loop(1000, config)
 
     wandb.finish()

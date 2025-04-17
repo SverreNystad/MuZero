@@ -15,6 +15,16 @@ from src.neural_networks.neural_network import (
     RepresentationNetwork,
 )
 
+def tiny_no_downsample_representation_config() -> RepresentationNetworkConfig:
+    """
+    A minimal RepresentationNetworkConfig with no downsample layers,
+    and no residual blocks.
+    """
+    return RepresentationNetworkConfig(
+        downsample=[],
+        res_net=[],
+    )
+
 
 def tiny_representation_config() -> RepresentationNetworkConfig:
     """
@@ -23,7 +33,7 @@ def tiny_representation_config() -> RepresentationNetworkConfig:
     """
     return RepresentationNetworkConfig(
         downsample=[
-            ConvLayerConfig(out_channels=32, kernel_size=3, stride=2, padding=1),
+            ConvLayerConfig(out_channels=32, kernel_size=1, stride=1, padding=1),
         ],
         res_net=[
             ResBlockConfig(
@@ -92,13 +102,16 @@ def tiny_prediction_config(num_actions: int = 2) -> PredictionNetworkConfig:
     )
 
 
-def tiny_repr_net(observation_space=(1, 1, 1), latent_shape=(2, 1, 1)):
+def tiny_repr_net(observation_space=(1, 1, 1), latent_shape=(2, 1, 1), downsample=True):
     """
     A very small RepresentationNetwork:
     - Input shape: (1,1,1) => 1 channel, 1x1 image
     - Output latent_shape: (2,1,1) => 2 channels, 1x1
     """
-    config = tiny_representation_config()
+    if downsample:
+        config = tiny_representation_config()
+    else:
+        config = tiny_no_downsample_representation_config()
     return RepresentationNetwork(
         observation_space=observation_space,
         latent_shape=latent_shape,  # (C,H,W) for latent
@@ -116,7 +129,7 @@ def tiny_dyn_net(latent_shape=(2, 1, 1), num_actions=2):
 
 
 def tiny_pred_net(latent_shape=(2, 1, 1), num_actions=2):
-    config = tiny_prediction_config(num_actions=2)
+    config = tiny_prediction_config(num_actions=num_actions)
     return PredictionNetwork(
         latent_shape=latent_shape,
         num_actions=num_actions,

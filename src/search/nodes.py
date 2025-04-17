@@ -17,6 +17,7 @@ class Node:
     visit_count: int = field(default_factory=int)
     value_sum: float = field(default_factory=float)
     reward: float = field(default_factory=float)
+    policy_priority: float = field(default_factory=float)
 
     def add_child(self, latent_state: torch.Tensor, action: torch.Tensor) -> "Node":
         """

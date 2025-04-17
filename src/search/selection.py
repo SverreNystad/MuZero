@@ -46,12 +46,12 @@ class PUCT(SelectionStrategy):
         pb_c = sqrt(parent.visit_count) / (node.visit_count + 1)
         pb_c *= log((node.visit_count + self.c2 + 1) / self.c2) + self.c1
 
-        prior_score = pb_c * parent.value_sum
+        prior_score = pb_c * node.policy_priority
         if node.visit_count > 0:
-            value_score = node.reward + self.discount * node.value_sum / node.visit_count
+            ts = node.value_sum / node.visit_count
         else:
-            value_score = 0
-        return prior_score + value_score
+            ts = 0
+        return ts + prior_score
 
     def __call__(self, root: Node) -> Node:
         while len(root.children.values()) > 0:

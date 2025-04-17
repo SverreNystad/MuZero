@@ -14,7 +14,7 @@ def test_muzero_simulation():
     pred_net = tiny_pred_net(latent_shape, num_actions=num_actions)
 
     simulation = MuZeroSimulation(dyn_net, pred_net, depth)
-    node = Node(torch.randn(*latent_shape))
+    node = Node(torch.randn(1, *latent_shape))
     rewards = simulation(node)
     assert isinstance(rewards, list)
     assert len(rewards) == depth + 1

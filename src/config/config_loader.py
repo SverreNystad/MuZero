@@ -7,11 +7,12 @@ from pydantic import BaseModel, Field
 
 from src.environments.car_racing import CarRacingConfig
 from src.environments.connect_four import ConnectFourConfig
+from src.environments.lunar_lander import LunarLanderConfig
 
 CONFIG_PATH = os.path.dirname(__file__)
 
 
-EnvironmentConfig = Union[CarRacingConfig, ConnectFourConfig]
+EnvironmentConfig = Union[CarRacingConfig, ConnectFourConfig, LunarLanderConfig]
 
 
 class SelectionStrategyType(StrEnum):
@@ -103,6 +104,7 @@ class ValidationConfig(BaseModel):
 
 class TrainingConfig(BaseModel):
     learning_rate: float
+    weight_decay: float
     batch_size: int
     replay_buffer_size: int
     alpha: float  # priority exponent
@@ -124,6 +126,7 @@ class Configuration(BaseModel):
     training: TrainingConfig
     validation: ValidationConfig
     runtime: RunTimeConfig
+    project_name: str = "muzero"
 
 
 def load_config(filename: str) -> Configuration:

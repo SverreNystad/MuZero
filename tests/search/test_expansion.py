@@ -3,15 +3,15 @@ import torch
 
 from src.search.expansion import _transform_latent_state, expand_node
 from src.search.nodes import Node
-from tests.nerual_networks.test_networks import tiny_dyn_net
+from tests.nerual_networks.test_networks import tiny_dyn_net, tiny_pred_net
 
 
 @pytest.mark.parametrize(
     ("actions", "latent_shape"),
     [
-        (torch.tensor([0, 1, 2, 3]), [10, 2, 6]),
-        (torch.tensor([0, 1, 2, 3]), [5, 2, 6]),
-        (torch.tensor([0]), [5, 2, 6]),
+        (torch.tensor([0, 1, 2, 3]), (10, 2, 6)),
+        (torch.tensor([0, 1, 2, 3]), (5, 2, 6)),
+        (torch.tensor([0]), (5, 2, 6)),
     ],
 )
 def test_expanding_leaf_node(actions, latent_shape):
@@ -20,16 +20,17 @@ def test_expanding_leaf_node(actions, latent_shape):
     latent_state = torch.randn(batch_size, *latent_shape)
     root = Node(latent_state)
     dynamics_network = tiny_dyn_net(latent_shape, num_actions=possible_actions)
+    prediction_network = tiny_pred_net(latent_shape, num_actions=possible_actions)
     assert len(root.children) == 0
 
-    expand_node(root, actions, dynamics_network)
+    expand_node(root, actions, dynamics_network, prediction_network)
     assert len(root.children) == len(actions)
     # Check that the latent state of the root node is not changed
     assert torch.allclose(root.latent_state, latent_state)
 
     # Check that the latent state of the children has correct shape
     for child in root.children.values():
-        assert child.latent_state.shape == latent_state.squeeze().shape
+        assert child.latent_state.shape == latent_state.shape
 
 
 @pytest.mark.parametrize(

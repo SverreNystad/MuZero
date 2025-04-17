@@ -29,7 +29,7 @@ class MuZeroSimulation(SimulationStrategy):
         Returns:
             The result of the simulation
         """
-        latent_state_batched = node.latent_state.unsqueeze(0)  # (1, latent_dim)
+        latent_state_batched = node.latent_state # latent_dim -> batched by nature<3
         accumulated_reward = []
         for _ in range(self.depth):
             policy, value = self.predictor(latent_state_batched)
