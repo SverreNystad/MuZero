@@ -3,7 +3,7 @@ import time
 
 import torch
 
-from src.neural_networks.neural_network import DynamicsNetwork
+from src.neural_networks.neural_network import DynamicsNetwork, PredictionNetwork
 from src.search.expansion import expand_node
 from src.search.nodes import Node
 from src.search.strategies import (
@@ -20,6 +20,7 @@ class MCTS:
         simulation: SimulationStrategy,
         backpropagation: BackpropagationStrategy,
         dynamic_network: DynamicsNetwork,
+        prediction_network: PredictionNetwork,
         actions: torch.Tensor,
         max_itr: int = 0,
         max_time: float = 0.0,
@@ -29,6 +30,7 @@ class MCTS:
         self.backpropagation = backpropagation
         self.actions = actions
         self.dynamics_network = dynamic_network
+        self.prediction_network = prediction_network
         self.max_itr = max_itr
         self.max_time = max_time
 
@@ -56,7 +58,7 @@ class MCTS:
         Run a single step of the Monte Carlo Tree Search algorithm.
         """
         chosen_node = self.selection(node)
-        expanded_node = expand_node(chosen_node, self.actions, self.dynamics_network)
+        expanded_node = expand_node(chosen_node, self.actions, self.dynamics_network, self.prediction_network)
         rewards = self.simulation(expanded_node)
         self.backpropagation(expanded_node, rewards, chosen_node.to_play)
 
