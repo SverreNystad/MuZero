@@ -134,7 +134,8 @@ def generate_train_model_loop(
         total_reward = 0
         val_simulation_count = config.validation.simulation_count
         for _ in range(val_simulation_count):
-            simulation_video_path = f"training_runs/simulation_{i}.mp4"
+            simulation_video_path = f"training_runs/simulation_{i:03}.mp4"
+
             total_reward += model_simulation(
                 env,
                 repr_net=repr_net,
