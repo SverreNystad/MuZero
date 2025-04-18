@@ -65,6 +65,7 @@ DownsampleLayerConfig = Annotated[Union[ConvLayerConfig, PoolLayerConfig, ResBlo
 
 
 class RepresentationNetworkConfig(BaseModel):
+    history_length: int
     downsample: list[DownsampleLayerConfig]
     res_net: list[ResBlockConfig]
 

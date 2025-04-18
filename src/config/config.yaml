@@ -45,6 +45,7 @@ validation:
 networks:
   latent_shape: [6, 6, 3]
   representation:
+    history_length: 32
     downsample:
       - type: "conv_layer" # in 96x96x3 out 48x48x3
         out_channels: 3
