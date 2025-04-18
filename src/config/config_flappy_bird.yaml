@@ -43,40 +43,103 @@ validation:
 
 # Neural network configurations
 networks:
-  latent_shape: [6, 6, 3]
+  latent_shape: [256, 6, 6]
   representation:
+    history_length: 32
     downsample:
-      - type: "conv_layer" # in 512x288x3 out 256x144x3
-        out_channels: 3
+      - type: "conv_layer" # in 512x288x3 out 256x144x128
+        out_channels: 128
         kernel_size: 2
         stride: 2
         padding: 0
         activation: "relu"
-      - type: "res_block" # in 256x144x3 out 128x72x3
-        in_channels: 3
-        out_channels: 3
+      - type: "res_block"
+        out_channels: 128
         kernel_size: 3
         stride: 1
         padding: 1
         activation: "relu"
         pool_stride: 1
         pool_kernel_size: 1
-      - type: "pool_layer" # in 128x72x3 out 64x36x3
-        kernel_size: 2
-        stride: 2
-        padding: 0
-        pool_type: "max"
-      - type: "conv_layer" # in 64x36x3 out 32x18x3
-        out_channels: 3
+      - type: "res_block"
+        in_channels: 128
+        out_channels: 128
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
+      - type: "conv_layer" # in 256x144x128 out 128x72x256
+        out_channels: 256
         kernel_size: 2
         stride: 2
         padding: 0
         activation: "relu"
-      - type: "pool_layer" # in 16x9x3 out 6x6x3
+      - type: "res_block"
+        in_channels: 256
+        out_channels: 256
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
+      - type: "res_block"
+        in_channels: 256
+        out_channels: 256
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
+      - type: "res_block"
+        in_channels: 256
+        out_channels: 256
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
+      - type: "pool_layer"  # in 128x72x256 out 64x36x256
         kernel_size: 2
         stride: 2
         padding: 0
-        pool_type: "max"
+        pool_type: "avg"
+      - type: "res_block"
+        in_channels: 256
+        out_channels: 256
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
+      - type: "res_block"
+        in_channels: 256
+        out_channels: 256
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
+      - type: "res_block"
+        in_channels: 256
+        out_channels: 256
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
+      - type: "pool_layer" # in 64x36x256 out 32x18x256
+        kernel_size: 2
+        stride: 2
+        padding: 0
+        pool_type: "avg"
     res_net:
       - in_channels: 3
         out_channels: 3
