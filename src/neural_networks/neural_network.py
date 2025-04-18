@@ -45,10 +45,12 @@ class RepresentationNetwork(nn.Module):
             config (RepresentationNetworkConfig): The Pydantic config containing layer definitions.
         """
         super().__init__()
+        self.history_length = config.history_length
 
         # 1) Build the 'downsample' layers
         self.downsample_layers = nn.ModuleList()
-        in_channels = observation_space[0]
+        rgb_channels = observation_space[0]
+        in_channels = rgb_channels * config.history_length + config.history_length
         for layer_cfg in config.downsample:
             layer, out_channels = build_downsample_layer(layer_cfg, in_channels)
             self.downsample_layers.append(layer)
