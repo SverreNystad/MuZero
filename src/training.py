@@ -17,6 +17,7 @@ from src.neural_networks.neural_network import (
     RepresentationNetwork,
 )
 from src.replay_buffer import ReplayBuffer
+from src.ring_buffer import FrameRingBuffer, Frame, make_history_tensor
 from src.training_data_generator import Episode
 
 FOLDER_REGEX = re.compile(r"^(\d+)_(\d{8}_\d{6})$")
@@ -149,10 +150,15 @@ class NeuralNetworkManager:
         """
         Pb_k, Vb_k, Rb_k = PVR
 
+        history_frames = FrameRingBuffer(size=self.repr_net.history_length)
+        history_frames.fill(Frame(state=Sb_k[0], action=Ab_k[0]))
+        for i in range(1, len(Sb_k)):
+            history_frames.add(Frame(state=Sb_k[i], action=Ab_k[i]))
+
         last_real_state = Sb_k[-1]
         if not isinstance(last_real_state, torch.Tensor):
             last_real_state = torch.tensor(last_real_state, dtype=torch.float32).to(self.device)
-        latent_state = self.repr_net(last_real_state)
+        latent_state = self.repr_net(make_history_tensor(history_frames))
 
         total_loss = torch.zeros(1, dtype=torch.float32).to(self.device)
 
