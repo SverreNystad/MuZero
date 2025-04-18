@@ -7,12 +7,13 @@ from pydantic import BaseModel, Field
 
 from src.environments.car_racing import CarRacingConfig
 from src.environments.connect_four import ConnectFourConfig
+from src.environments.flappy_bird import FlappyBirdConfig
 from src.environments.lunar_lander import LunarLanderConfig
 
 CONFIG_PATH = os.path.dirname(__file__)
 
 
-EnvironmentConfig = Union[CarRacingConfig, ConnectFourConfig, LunarLanderConfig]
+EnvironmentConfig = Union[CarRacingConfig, ConnectFourConfig, LunarLanderConfig, FlappyBirdConfig]
 
 
 class SelectionStrategyType(StrEnum):
