@@ -9,20 +9,20 @@ import numpy
 from torch import Tensor
 from tqdm import trange
 
-from src.config.config_loader import TrainingDataGeneratorConfig
+from src.config.config_loader import RepresentationNetworkConfig, TrainingDataGeneratorConfig
 from src.environment import Environment
 from src.neural_networks.neural_network import (
     DynamicsNetwork,
     PredictionNetwork,
     RepresentationNetwork,
 )
+from src.ring_buffer import FrameRingBuffer, Frame, make_history_tensor
 from src.search.factory import create_mcts
 from src.search.mcts import MCTS
 from src.search.nodes import Node
 
 # Set the random seed for reproducibility
 random.seed(0)
-
 
 @dataclass
 class Chunk:
@@ -111,12 +111,18 @@ class TrainingDataGenerator:
             self.env.reset()
             epidata = Episode(chunks=[])
             state = self.env.get_state()
+            ringbuffer = FrameRingBuffer(size=self.repr_net.history_length)
 
             for _ in trange(self.max_steps, desc="Steps per Episode", leave=False):
                 # Convert the environment's state to a latent representation
                 state = self.env.get_state()
-                latent_state = self.repr_net(state)
+                frame = Frame(state=state, action=0) # state -> (1, 3, 512, 288)
+                if (not ringbuffer.full()):
+                    ringbuffer.fill(frame)
+                else:
+                    ringbuffer.add(frame)
 
+                latent_state = self.repr_net(make_history_tensor(ringbuffer)) # (batch, channels, height, width) -> (1, (3 + 1) * 32, 512, 288)
                 # Run MCTS to get policy distribution (tree_policy) and value estimate.
                 root = Node(latent_state=latent_state, to_play=self.env.get_to_play())
                 tree_policy, value = self.mcts.run(root)
