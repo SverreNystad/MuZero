@@ -1,6 +1,7 @@
 import imageio
 import torch
 
+from src.ring_buffer import FrameRingBuffer, Frame, make_history_tensor
 from src.environment import Environment
 from src.neural_networks.neural_network import PredictionNetwork, RepresentationNetwork
 
@@ -22,13 +23,18 @@ def model_simulation(
     running_reward = 0.0
     frames = []
 
+
+    ringbuffer = FrameRingBuffer(repr_net.history_length)
+    ringbuffer.fill(Frame(state, 0))
+
     for i in range(inference_simulation_depth):
         # Get the current state of the environment.
         frame = env.render()
         frames.append(frame)
 
+
         # Encode the state using the representation network.
-        latent_state = repr_net(state)
+        latent_state = repr_net(make_history_tensor(ringbuffer))
 
         policy, value = pred_net(latent_state)
 
@@ -38,6 +44,8 @@ def model_simulation(
         # Step the environment using the action.
         state, reward, done = env.step(action)
         running_reward += reward
+
+        ringbuffer.add(Frame(state, action))
 
         if human_mode:
             print(f"Step {i}: Action: {action}, Reward: {reward}, Value: {value.item()}")
