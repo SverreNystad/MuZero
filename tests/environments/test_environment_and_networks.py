@@ -4,6 +4,7 @@ from src.environment import Environment
 from src.environments.car_racing import CarRacingConfig
 from src.environments.connect_four import ConnectFourConfig
 from src.environments.factory import create_environment
+from src.environments.flappy_bird import FlappyBirdConfig
 from src.environments.lunar_lander import LunarLanderConfig
 from tests.nerual_networks.test_networks import tiny_repr_net
 
@@ -13,6 +14,7 @@ from tests.nerual_networks.test_networks import tiny_repr_net
     [
         CarRacingConfig(seed=42, render_mode="rgb_array"),  # (3, 96, 96)
         ConnectFourConfig(),  # (2, 6, 7)
+        FlappyBirdConfig(), # (3, 512, 288)
     ],
 )
 def test_environments_states_with_representation_network(env_config: CarRacingConfig):
@@ -52,4 +54,3 @@ def test_lunar_lander_states_with_representation_network():
     next_latent = repr_net(obs)
     assert next_latent.shape == (1, *latent_shape)
     assert not (latent == next_latent).all()
-
