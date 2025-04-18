@@ -99,8 +99,6 @@ networks:
     reward_net:
       - out_features: 128
         activation: "relu"
-      - out_features: 1
-        activation: "relu"
   prediction:
     res_net:
       - in_channels: 3

@@ -143,7 +143,9 @@ class DynamicsNetwork(nn.Module):
 
         # 4) Build the reward MLP from config.reward_net
         #    The input dimension for the reward MLP is c * h * w (flattened next-latent).
-        self.reward_mlp, _ = build_mlp(config.reward_net, input_dim=c * h * w)
+        reward_mlp_architecture = config.reward_net
+        reward_mlp_architecture.append(DenseLayerConfig(out_features=1, activation="linear"))
+        self.reward_mlp, _ = build_mlp(reward_mlp_architecture, input_dim=c * h * w)
 
     def forward(self, latent_state: torch.Tensor, action: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
