@@ -28,6 +28,7 @@ def test_representation_network_forward(batch_size):
     latent_shape = (input_channels, 6, 6)
 
     config = RepresentationNetworkConfig(
+        history_length=1,
         downsample=[
             ConvLayerConfig(out_channels=32, kernel_size=3, stride=2, padding=1),
             ResBlockConfig(
