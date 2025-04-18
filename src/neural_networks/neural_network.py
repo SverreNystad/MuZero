@@ -218,7 +218,9 @@ class PredictionNetwork(nn.Module):
 
         # 2) Build the value MLP from config.value_net
         #    The input dimension is c*h*w after flatten
-        self.value_mlp, _ = build_mlp(config.value_net, input_dim=c * h * w)
+        value_mlp_architecture = config.value_net
+        value_mlp_architecture.append(DenseLayerConfig(out_features=1, activation="linear"))
+        self.value_mlp, _ = build_mlp(value_mlp_architecture, input_dim=c * h * w)
 
         # 3) Build the policy MLP from config.policy_net
         policy_mlp_architecture = config.policy_net
