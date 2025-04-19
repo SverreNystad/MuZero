@@ -77,7 +77,7 @@ class MCTS:
         expand_node(root, self.actions, self.dynamics_network, self.prediction_network)
         num_actions = len(root.children)
         noise = torch.distributions.Dirichlet(torch.full((num_actions,), self.dirichlet_alpha)).sample()
-        for (a, child), dirichlet_sample in zip(root.children.items(), noise):
+        for child, dirichlet_sample in zip(root.children.values(), noise):
             # new_prior = (1‑ε)·P + ε·η
             child.policy_priority += (1.0 - self.noise_frac) * child.policy_priority + self.noise_frac * dirichlet_sample
 
