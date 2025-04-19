@@ -27,6 +27,8 @@ class MCTSConfig(BaseModel):
     max_time: int
     model_look_ahead: int = 5
     discount_factor: float = 1.0
+    dirichlet_alpha: float = 0.3
+    noise_frac: float = 0.25
 
 
 class ConvLayerConfig(BaseModel):
@@ -115,6 +117,13 @@ class TrainingConfig(BaseModel):
     roll_ahead: int
     look_back: int
     mini_batch_size: int
+    reward_coefficient: float
+    value_coefficient: float
+    policy_coefficient: float
+    min_learning_rate: float
+    total_training_steps: int
+    use_mixed_precision: bool
+    lr_schedule: str  # e.g. "linear", "cosine", "step"
 
 
 class RunTimeConfig(BaseModel):
