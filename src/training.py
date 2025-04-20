@@ -17,7 +17,7 @@ from src.neural_networks.neural_network import (
     RepresentationNetwork,
 )
 from src.replay_buffer import ReplayBuffer
-from src.ring_buffer import FrameRingBuffer, Frame, make_history_tensor
+from src.ring_buffer import Frame, FrameRingBuffer, make_history_tensor
 from src.training_data_generator import Episode
 
 FOLDER_REGEX = re.compile(r"^(\d+)_(\d{8}_\d{6})$")
@@ -252,18 +252,18 @@ class NeuralNetworkManager:
 
     def reward_loss(self, target_reward: Tensor, pred_reward: Tensor) -> Tensor:
         """Compute the MSE between target reward and predicted reward."""
-        return F.mse_loss(pred_reward, target_reward)
+        return F.cross_entropy(pred_reward, target_reward)
 
     def value_loss(self, target_value: Tensor, pred_value: Tensor) -> Tensor:
         """Compute the MSE between target value and predicted value."""
-        return F.mse_loss(pred_value, target_value)
+        return F.cross_entropy(pred_value, target_value)
 
     def policy_loss(self, target_policy: Tensor, pred_policy: Tensor) -> Tensor:
         """
         Compute cross-entropy or KL divergence for the policy:
         l_p(π, p) = - sum( π * log p ).
         """
-        return -torch.sum(target_policy * torch.log(pred_policy))
+        return F.cross_entropy(pred_policy, target_policy)
 
     def save_models(
         self,
