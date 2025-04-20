@@ -1,16 +1,29 @@
 import imageio
 import torch
+from torch import Tensor
 
-from src.ring_buffer import FrameRingBuffer, Frame, make_history_tensor
+from src.config.config_loader import MCTSConfig
 from src.environment import Environment
-from src.neural_networks.neural_network import PredictionNetwork, RepresentationNetwork
+from src.neural_networks.neural_network import (
+    DynamicsNetwork,
+    PredictionNetwork,
+    RepresentationNetwork,
+)
+from src.ring_buffer import Frame, FrameRingBuffer, make_history_tensor
+from src.search.factory import create_mcts
+from src.search.mcts import MCTS
+from src.search.nodes import Node
+from src.training_data_generator import _make_actions_tensor
 
 
 def model_simulation(
     env: Environment,
     repr_net: RepresentationNetwork,
+    dyn_net: DynamicsNetwork,
     pred_net: PredictionNetwork,
     inference_simulation_depth: int,
+    mcts_config: MCTSConfig,
+    device: str = "cpu",
     human_mode: bool = True,
     video_path: str = "simulation.mp4",
 ) -> float:
@@ -20,9 +33,14 @@ def model_simulation(
         env.env.render_mode = "human"
 
     state = env.get_state()
+    mcts: MCTS = create_mcts(
+        dynamics_network=dyn_net,
+        prediction_network=pred_net,
+        actions=_make_actions_tensor(env, device),
+        config=mcts_config,
+    )
     running_reward = 0.0
     frames = []
-
 
     ringbuffer = FrameRingBuffer(repr_net.history_length)
     ringbuffer.fill(Frame(state, 0))
@@ -32,14 +50,17 @@ def model_simulation(
         frame = env.render()
         frames.append(frame)
 
-
         # Encode the state using the representation network.
-        latent_state = repr_net(make_history_tensor(ringbuffer))
+        history_tensor = make_history_tensor(ringbuffer)
 
-        policy, value = pred_net(latent_state)
+        latent_state = repr_net(history_tensor)  # (batch, channels, height, width) -> (1, (3 + 1) * 32, 512, 288)
+        # Run MCTS to get policy distribution (tree_policy) and value estimate.
+        root = Node(latent_state=latent_state, to_play=env.get_to_play())
+        tree_policy, value = mcts.run(root)
+        policy_tensor = Tensor(tree_policy)
 
         # Pick the action with the highest probability.
-        action = torch.argmax(policy).item()
+        action = torch.argmax(policy_tensor).item()
 
         # Step the environment using the action.
         state, reward, done = env.step(action)

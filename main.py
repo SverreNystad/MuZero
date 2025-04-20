@@ -125,7 +125,7 @@ def generate_train_model_loop(
     wandb.watch(pred_net, log="all")
     replay_buffer = ReplayBuffer(config.training.replay_buffer_size, config.training.batch_size, config.training.alpha)
     for i in trange(n):
-        episodes = generate_training_data(repr_net, dyn_net, pred_net, config, device, i, False)
+        episodes = generate_training_data(repr_net, dyn_net, pred_net, config, device, i, True)
         replay_buffer.add_episodes(episodes)
 
         repr_net, dyn_net, pred_net = train_model(repr_net, dyn_net, pred_net, config, replay_buffer, device)
@@ -139,7 +139,10 @@ def generate_train_model_loop(
             total_reward += model_simulation(
                 env,
                 repr_net=repr_net,
+                dyn_net=dyn_net,
                 pred_net=pred_net,
+                mcts_config=config.training_data_generator.mcts,
+                device=device,
                 inference_simulation_depth=config.validation.simulation_depth,
                 human_mode=False,
                 video_path=simulation_video_path,
