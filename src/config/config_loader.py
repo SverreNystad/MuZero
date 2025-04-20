@@ -122,7 +122,6 @@ class TrainingConfig(BaseModel):
     policy_coefficient: float
     min_learning_rate: float
     total_training_steps: int
-    use_mixed_precision: bool
     lr_schedule: str  # e.g. "linear", "cosine", "step"
 
 

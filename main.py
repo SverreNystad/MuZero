@@ -125,7 +125,7 @@ def generate_train_model_loop(
     wandb.watch(pred_net, log="all")
     replay_buffer = ReplayBuffer(config.training.replay_buffer_size, config.training.batch_size, config.training.alpha)
     for i in trange(n):
-        episodes = generate_training_data(repr_net, dyn_net, pred_net, config, device, i, True)
+        episodes = generate_training_data(repr_net, dyn_net, pred_net, config, device, i, False)
         replay_buffer.add_episodes(episodes)
 
         repr_net, dyn_net, pred_net = train_model(repr_net, dyn_net, pred_net, config, replay_buffer, device)
