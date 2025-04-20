@@ -18,6 +18,7 @@ from src.neural_networks.neural_network import (
     RepresentationNetwork,
 )
 from src.replay_buffer import ReplayBuffer
+from src.ring_buffer import Frame, FrameRingBuffer, make_history_tensor
 from src.training_data_generator import Episode
 
 FOLDER_REGEX = re.compile(r"^(\d+)_(\d{8}_\d{6})$")
@@ -151,10 +152,12 @@ class NeuralNetworkManager:
         """
         Pb_k, Vb_k, Rb_k = PVR
 
-        last_real_state = Sb_k[-1]
-        if not isinstance(last_real_state, torch.Tensor):
-            last_real_state = torch.tensor(last_real_state, dtype=torch.float32).to(self.device)
-        latent_state = self.repr_net(last_real_state)
+        history_frames = FrameRingBuffer(size=self.repr_net.history_length)
+        history_frames.fill(Frame(state=Sb_k[0], action=Ab_k[0]))
+        for i in range(1, len(Sb_k)):
+            history_frames.add(Frame(state=Sb_k[i], action=Ab_k[i]))
+
+        latent_state = self.repr_net(make_history_tensor(history_frames))
 
         total_loss = torch.zeros(1, dtype=torch.float32).to(self.device)
 
@@ -248,18 +251,18 @@ class NeuralNetworkManager:
 
     def reward_loss(self, target_reward: Tensor, pred_reward: Tensor) -> Tensor:
         """Compute the MSE between target reward and predicted reward."""
-        return F.mse_loss(pred_reward, target_reward)
+        return F.cross_entropy(pred_reward, target_reward) * self.config.reward_coefficient
 
     def value_loss(self, target_value: Tensor, pred_value: Tensor) -> Tensor:
         """Compute the MSE between target value and predicted value."""
-        return F.mse_loss(pred_value, target_value)
+        return F.cross_entropy(pred_value, target_value) * self.config.value_coefficient
 
     def policy_loss(self, target_policy: Tensor, pred_policy: Tensor) -> Tensor:
         """
         Compute cross-entropy or KL divergence for the policy:
         l_p(π, p) = - sum( π * log p ).
         """
-        return -torch.sum(target_policy * torch.log(pred_policy))
+        return F.cross_entropy(pred_policy, target_policy) * self.config.policy_coefficient
 
     def save_models(
         self,

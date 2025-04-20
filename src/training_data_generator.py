@@ -16,6 +16,7 @@ from src.neural_networks.neural_network import (
     PredictionNetwork,
     RepresentationNetwork,
 )
+from src.ring_buffer import Frame, FrameRingBuffer, make_history_tensor
 from src.search.factory import create_mcts
 from src.search.mcts import MCTS
 from src.search.nodes import Node
@@ -82,24 +83,12 @@ class TrainingDataGenerator:
         self.mcts: MCTS = create_mcts(
             dynamics_network=dyn_net,
             prediction_network=pred_net,
-            actions=self._make_actions_tensor(env),
+            actions=_make_actions_tensor(env, device),
             config=config.mcts,
             device=device,
         )
         self.epsilon: float = config.epsilon
         self.epsilon_decay: float = config.epsilon_decay
-
-    def _make_actions_tensor(self, env: Environment) -> Tensor:
-        """
-        Convert the environment's action space (e.g. range of valid moves) into a Torch tensor.
-        """
-        # E.g., if env.get_action_space() returns an integer (num_actions),
-        # we can create a range tensor of that size.
-        action_space = env.get_action_space()
-        if isinstance(action_space, int):
-            return Tensor(range(action_space)).long().to(self.device)
-        # If your environment's action space is already a tuple or list, etc.
-        return Tensor(action_space).long().to(self.device)
 
     def generate_training_data(self, training_steps: int = 0) -> list[Episode]:
         """
@@ -113,12 +102,19 @@ class TrainingDataGenerator:
             self.env.reset()
             epidata = Episode(chunks=[])
             state = self.env.get_state()
+            ringbuffer = FrameRingBuffer(size=self.repr_net.history_length)
 
             for _ in trange(self.max_steps, desc="Steps per Episode", leave=False):
                 # Convert the environment's state to a latent representation
                 state = self.env.get_state()
-                latent_state = self.repr_net(state)
+                frame = Frame(state=state, action=0)
+                if not ringbuffer.full():
+                    ringbuffer.fill(frame)
+                else:
+                    ringbuffer.add(frame)
 
+                history_tensor = make_history_tensor(ringbuffer)
+                latent_state = self.repr_net(history_tensor)  # (batch, channels, height, width) -> (1, (3 + 1) * 32, 512, 288)
                 # Run MCTS to get policy distribution (tree_policy) and value estimate.
                 root = Node(latent_state=latent_state, to_play=self.env.get_to_play())
                 tree_policy, value = self.mcts.run(root)
@@ -172,6 +168,19 @@ def calculate_epsilon(config: TrainingDataGeneratorConfig, training_steps: int) 
     Calculate the decayed epsilon value based on the number of training steps.
     """
     return max(config.epsilon * (config.epsilon_decay**training_steps), 0.0001)
+
+
+def _make_actions_tensor(env: Environment, device) -> Tensor:
+    """
+    Convert the environment's action space (e.g. range of valid moves) into a Torch tensor.
+    """
+    # E.g., if env.get_action_space() returns an integer (num_actions),
+    # we can create a range tensor of that size.
+    action_space = env.get_action_space()
+    if isinstance(action_space, int):
+        return Tensor(range(action_space)).long().to(device)
+    # If your environment's action space is already a tuple or list, etc.
+    return Tensor(action_space).long().to(device)
 
 
 DATA_FOLDER = "data/"

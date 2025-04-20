@@ -21,6 +21,7 @@ def tiny_no_downsample_representation_config() -> RepresentationNetworkConfig:
     and no residual blocks.
     """
     return RepresentationNetworkConfig(
+        history_length=1,
         downsample=[],
         res_net=[],
     )
@@ -32,6 +33,7 @@ def tiny_representation_config() -> RepresentationNetworkConfig:
     no residual blocks.
     """
     return RepresentationNetworkConfig(
+        history_length=1,
         downsample=[
             ConvLayerConfig(out_channels=32, kernel_size=1, stride=1, padding=1),
         ],

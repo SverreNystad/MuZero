@@ -7,12 +7,13 @@ from pydantic import BaseModel, Field
 
 from src.environments.car_racing import CarRacingConfig
 from src.environments.connect_four import ConnectFourConfig
+from src.environments.flappy_bird import FlappyBirdConfig
 from src.environments.lunar_lander import LunarLanderConfig
 
 CONFIG_PATH = os.path.dirname(__file__)
 
 
-EnvironmentConfig = Union[CarRacingConfig, ConnectFourConfig, LunarLanderConfig]
+EnvironmentConfig = Union[CarRacingConfig, ConnectFourConfig, LunarLanderConfig, FlappyBirdConfig]
 
 
 class SelectionStrategyType(StrEnum):
@@ -26,6 +27,8 @@ class MCTSConfig(BaseModel):
     max_time: int
     model_look_ahead: int = 5
     discount_factor: float = 1.0
+    dirichlet_alpha: float = 0.3
+    noise_frac: float = 0.25
 
 
 class ConvLayerConfig(BaseModel):
@@ -64,6 +67,7 @@ DownsampleLayerConfig = Annotated[Union[ConvLayerConfig, PoolLayerConfig, ResBlo
 
 
 class RepresentationNetworkConfig(BaseModel):
+    history_length: int
     downsample: list[DownsampleLayerConfig]
     res_net: list[ResBlockConfig]
 
@@ -113,6 +117,12 @@ class TrainingConfig(BaseModel):
     roll_ahead: int
     look_back: int
     mini_batch_size: int
+    reward_coefficient: float
+    value_coefficient: float
+    policy_coefficient: float
+    min_learning_rate: float
+    total_training_steps: int
+    lr_schedule: str  # e.g. "linear", "cosine", "step"
 
 
 class RunTimeConfig(BaseModel):

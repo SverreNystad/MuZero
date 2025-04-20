@@ -24,6 +24,8 @@ class MCTS:
         actions: torch.Tensor,
         max_itr: int = 0,
         max_time: float = 0.0,
+        dirichlet_alpha: float = 0.3,
+        noise_frac: float = 0.25,
     ) -> None:
         self.selection = selection
         self.simulation = simulation
@@ -33,11 +35,17 @@ class MCTS:
         self.prediction_network = prediction_network
         self.max_itr = max_itr
         self.max_time = max_time
+        self.dirichlet_alpha: float = dirichlet_alpha
+        self.noise_frac: float = noise_frac
 
     def run(self, root: Node) -> tuple[list[float], float]:
         """
         Run the Monte Carlo Tree Search algorithm mutating the tree starting at `root`.
         """
+
+        # Add Dirichlet noise to the root node.
+        self._add_dirichlet_noise(root)
+
         if self.max_itr == 0:
             start_time = time.time()
             while time.time() - start_time < self.max_time:
@@ -61,6 +69,17 @@ class MCTS:
         expanded_node = expand_node(chosen_node, self.actions, self.dynamics_network, self.prediction_network)
         rewards = self.simulation(expanded_node)
         self.backpropagation(expanded_node, rewards, chosen_node.to_play)
+
+    def _add_dirichlet_noise(self, root: Node) -> None:
+        """
+        Add Dirichlet noise to the node.
+        """
+        expand_node(root, self.actions, self.dynamics_network, self.prediction_network)
+        num_actions = len(root.children)
+        noise = torch.distributions.Dirichlet(torch.full((num_actions,), self.dirichlet_alpha)).sample()
+        for child, dirichlet_sample in zip(root.children.values(), noise):
+            # new_prior = (1‑ε)·P + ε·η
+            child.policy_priority += (1.0 - self.noise_frac) * child.policy_priority + self.noise_frac * dirichlet_sample
 
 
 def _soft_max(values: list[float]) -> list[float]:

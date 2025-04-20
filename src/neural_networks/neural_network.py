@@ -45,10 +45,12 @@ class RepresentationNetwork(nn.Module):
             config (RepresentationNetworkConfig): The Pydantic config containing layer definitions.
         """
         super().__init__()
+        self.history_length = config.history_length
 
         # 1) Build the 'downsample' layers
         self.downsample_layers = nn.ModuleList()
-        in_channels = observation_space[0]
+        rgb_channels = observation_space[0]
+        in_channels = rgb_channels * config.history_length + config.history_length
         for layer_cfg in config.downsample:
             layer, out_channels = build_downsample_layer(layer_cfg, in_channels)
             self.downsample_layers.append(layer)
@@ -150,7 +152,9 @@ class DynamicsNetwork(nn.Module):
 
         # 4) Build the reward MLP from config.reward_net
         #    The input dimension for the reward MLP is c * h * w (flattened next-latent).
-        self.reward_mlp, _ = build_mlp(config.reward_net, input_dim=c * h * w)
+        reward_mlp_architecture = config.reward_net
+        reward_mlp_architecture.append(DenseLayerConfig(out_features=1, activation="linear"))
+        self.reward_mlp, _ = build_mlp(reward_mlp_architecture, input_dim=c * h * w)
 
     def forward(self, latent_state: torch.Tensor, action: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
@@ -231,7 +235,9 @@ class PredictionNetwork(nn.Module):
 
         # 2) Build the value MLP from config.value_net
         #    The input dimension is c*h*w after flatten
-        self.value_mlp, _ = build_mlp(config.value_net, input_dim=c * h * w)
+        value_mlp_architecture = config.value_net
+        value_mlp_architecture.append(DenseLayerConfig(out_features=1, activation="linear"))
+        self.value_mlp, _ = build_mlp(value_mlp_architecture, input_dim=c * h * w)
 
         # 3) Build the policy MLP from config.policy_net
         policy_mlp_architecture = config.policy_net

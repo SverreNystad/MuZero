@@ -15,7 +15,7 @@ def get_activation(activation_name: str | None) -> nn.Module:
     If activation_name is None or "none", returns an identity.
     """
     match activation_name.lower():
-        case None | "none":
+        case None | "linear" | "none":
             return nn.Identity()
         case "relu":
             return nn.ReLU(inplace=True)

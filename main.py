@@ -119,10 +119,6 @@ def generate_train_model_loop(
         config=config.networks.prediction,
     ).to(device)
 
-    # wandb.watch(repr_net, log="all")
-    # wandb.watch(dyn_net, log="all")
-    # wandb.watch(pred_net, log="all")
-
     # Make generating ray remote
     print(ray.available_resources())
     cpus = ray.available_resources().get("CPU", 1)
@@ -167,7 +163,10 @@ def generate_train_model_loop(
             total_reward += model_simulation(
                 env,
                 repr_net=repr_net,
+                dyn_net=dyn_net,
                 pred_net=pred_net,
+                mcts_config=config.training_data_generator.mcts,
+                device=device,
                 inference_simulation_depth=config.validation.simulation_depth,
                 human_mode=False,
                 video_path=simulation_video_path,
@@ -212,19 +211,16 @@ if __name__ == "__main__":
         },
     )
     print(f"Ray initialized with context: \n{context}")
-    config = load_config("config_lunar_lander.yaml")
+    config = load_config("config_flappy_bird.yaml")
     load_dotenv()
     WANDB_API_KEY = os.getenv("WANDB_API_KEY")
     wandb.login(key=WANDB_API_KEY)
     wandb.init(
         project=f"muzero - {config.project_name}",
-        # mode="disabled",
-        # Track hyperparameters and run metadata.
+        mode="disabled",
         config=config,
     )
 
-    # _profile_code(generate_training_data)
-    # _profile_code(train_model)
     generate_train_model_loop(1000, config)
 
     wandb.finish()
