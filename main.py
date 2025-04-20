@@ -183,7 +183,7 @@ if __name__ == "__main__":
     wandb.login(key=WANDB_API_KEY)
     wandb.init(
         project=f"muzero - {config.project_name}",
-        mode="disabled",
+        # mode="disabled",
         # Track hyperparameters and run metadata.
         config=config,
     )
