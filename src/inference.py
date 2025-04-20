@@ -51,13 +51,13 @@ def model_simulation(
         frames.append(frame)
 
         # Encode the state using the representation network.
-        history_tensor = make_history_tensor(ringbuffer)
+        history_tensor = make_history_tensor(ringbuffer).to(device)
 
         latent_state = repr_net(history_tensor)  # (batch, channels, height, width) -> (1, (3 + 1) * 32, 512, 288)
         # Run MCTS to get policy distribution (tree_policy) and value estimate.
         root = Node(latent_state=latent_state, to_play=env.get_to_play())
         tree_policy, value = mcts.run(root)
-        policy_tensor = Tensor(tree_policy)
+        policy_tensor = Tensor(tree_policy).to(device)
 
         # Pick the action with the highest probability.
         action = torch.argmax(policy_tensor).item()
