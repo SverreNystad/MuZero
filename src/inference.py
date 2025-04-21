@@ -17,6 +17,7 @@ from src.search.nodes import Node
 from src.training_data_generator import _make_actions_tensor
 
 
+@torch.no_grad()
 def model_simulation(
     env: Environment,
     repr_net: RepresentationNetwork,
