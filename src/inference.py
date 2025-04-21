@@ -1,6 +1,7 @@
 import imageio
 import torch
 from torch import Tensor
+from tqdm import trange
 
 from src.config.config_loader import MCTSConfig
 from src.environment import Environment
@@ -16,6 +17,7 @@ from src.search.nodes import Node
 from src.training_data_generator import _make_actions_tensor
 
 
+@torch.no_grad()
 def model_simulation(
     env: Environment,
     repr_net: RepresentationNetwork,
@@ -38,6 +40,7 @@ def model_simulation(
         prediction_network=pred_net,
         actions=_make_actions_tensor(env, device),
         config=mcts_config,
+        device=device,
     )
     running_reward = 0.0
     frames = []
@@ -45,19 +48,19 @@ def model_simulation(
     ringbuffer = FrameRingBuffer(repr_net.history_length)
     ringbuffer.fill(Frame(state, 0))
 
-    for i in range(inference_simulation_depth):
+    for i in trange(inference_simulation_depth):
         # Get the current state of the environment.
         frame = env.render()
         frames.append(frame)
 
         # Encode the state using the representation network.
-        history_tensor = make_history_tensor(ringbuffer)
+        history_tensor = make_history_tensor(ringbuffer).to(device)
 
         latent_state = repr_net(history_tensor)  # (batch, channels, height, width) -> (1, (3 + 1) * 32, 512, 288)
         # Run MCTS to get policy distribution (tree_policy) and value estimate.
         root = Node(latent_state=latent_state, to_play=env.get_to_play())
         tree_policy, value = mcts.run(root)
-        policy_tensor = Tensor(tree_policy)
+        policy_tensor = Tensor(tree_policy).to(device)
 
         # Pick the action with the highest probability.
         action = torch.argmax(policy_tensor).item()

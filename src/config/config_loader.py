@@ -98,6 +98,7 @@ class TrainingDataGeneratorConfig(BaseModel):
     # Epsilon greedy action selection aka (exploration)
     epsilon: float
     epsilon_decay: float
+    random_action_probability: list[float] | None = None
 
 
 class ValidationConfig(BaseModel):

@@ -26,7 +26,7 @@ module purge
 module load Anaconda3/2024.02-1
 
 # Create a new Conda environment
-conda create -y --prefix ${ENV_PATH} python=3.10
+conda create -y --prefix ${ENV_PATH} python=3.11
 
 # Activate the environment
 conda activate ${ENV_PATH}
