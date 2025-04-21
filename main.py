@@ -134,7 +134,7 @@ def generate_train_model_loop(
         device_ref = ray.put(device)
 
         object_refs = []
-        for j in range(1):
+        for j in range(10):
             object_ref = generate_training_data.remote(
                 repr_net_ref, dyn_net_ref, pred_net_ref, config, device_ref, i, save_data=False
             )
