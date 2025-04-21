@@ -1,6 +1,7 @@
 import ray
 import torch
 
+import wandb
 from src.config.config_loader import TrainingConfig
 from src.neural_networks.neural_network import (
     DynamicsNetwork,
@@ -28,6 +29,10 @@ class ParameterServer:
             lr=config.learning_rate,
             betas=config.betas,
         )
+        wandb.init()
+        wandb.watch(representation_network, log="all")
+        wandb.watch(dynamics_networks, log="all")
+        wandb.watch(prediction_network, log="all")
 
     def get_networks(self) -> tuple[RepresentationNetwork, DynamicsNetwork, PredictionNetwork]:
         return (
