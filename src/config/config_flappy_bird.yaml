@@ -14,7 +14,7 @@ training_data_generator:
   max_steps_per_episode: 500
   total_time: 3600
   epsilon: 1.0
-  epsilon_decay: 0.0 # Disable
+  epsilon_decay: 0.85
   random_action_probability: [0.92, 0.08]
   mcts:
       selection_strategy: "puct"          # can be "uct" or "puct"
