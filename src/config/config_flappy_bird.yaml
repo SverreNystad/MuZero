@@ -47,7 +47,7 @@ training:
 
 
 validation:
-  video_upload_interval: 10
+  video_upload_interval: 1
   simulation_count: 1
   simulation_depth: 300
 
