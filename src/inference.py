@@ -1,6 +1,7 @@
 import imageio
 import torch
 from torch import Tensor
+from tqdm import trange
 
 from src.config.config_loader import MCTSConfig
 from src.environment import Environment
@@ -45,7 +46,7 @@ def model_simulation(
     ringbuffer = FrameRingBuffer(repr_net.history_length)
     ringbuffer.fill(Frame(state, 0))
 
-    for i in range(inference_simulation_depth):
+    for i in trange(inference_simulation_depth):
         # Get the current state of the environment.
         frame = env.render()
         frames.append(frame)
