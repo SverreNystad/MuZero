@@ -249,11 +249,11 @@ class NeuralNetworkManager:
 
     def reward_loss(self, target_reward: Tensor, pred_reward: Tensor) -> Tensor:
         """Compute the MSE between target reward and predicted reward."""
-        return F.cross_entropy(pred_reward, target_reward) * self.config.reward_coefficient
+        return F.mse_loss(pred_reward, target_reward) * self.config.reward_coefficient
 
     def value_loss(self, target_value: Tensor, pred_value: Tensor) -> Tensor:
         """Compute the MSE between target value and predicted value."""
-        return F.cross_entropy(pred_value, target_value) * self.config.value_coefficient
+        return F.mse_loss(pred_value, target_value) * self.config.value_coefficient
 
     def policy_loss(self, target_policy: Tensor, pred_policy: Tensor) -> Tensor:
         """
