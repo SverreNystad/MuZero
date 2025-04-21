@@ -1,5 +1,6 @@
 import numpy as np
 
+import wandb
 from src.training_data_generator import Episode
 
 # Set the random seed for reproducibility
@@ -27,7 +28,7 @@ class ReplayBuffer:
         self.alpha = alpha
 
         # Store (episode, priority)
-        self.episode_buffer = []
+        self.episode_buffer: list[tuple[Episode, float]] = []
         self.max_priority = 1.0
 
     def add_episodes(self, episodes: list[Episode]) -> None:
@@ -39,6 +40,20 @@ class ReplayBuffer:
         over_capacity = len(self.episode_buffer) - self.buffer_capacity
         if over_capacity > 0:
             self.episode_buffer = self.episode_buffer[over_capacity:]
+
+        # Log the average amount of states in each episode
+        avg_states = np.mean([len(ep.chunks) for ep, _ in self.episode_buffer])
+        median_reward = np.median([[chunk.reward for chunk in ep.chunks] for ep, _ in self.episode_buffer])
+        max_reward = np.max([[chunk.reward for chunk in ep.chunks] for ep, _ in self.episode_buffer])
+
+        wandb.log(
+            {
+                "replay/average_states_per_episode": avg_states,
+                "replay/total_episodes_in_buffer": len(self.episode_buffer),
+                "replay/max_reward": max_reward,
+                "replay/median_reward": median_reward,
+            }
+        )
 
     def sample_batch(self) -> tuple[list[Episode], list[int]]:
         """
