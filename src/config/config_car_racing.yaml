@@ -4,7 +4,7 @@ runtime:
   use_cuda: true
 # Environment Configuration
 environment:
-  type: "LunarLander"
+  type: "CarRacing"
   seed: 502
   render_mode: "rgb_array"
 
@@ -47,7 +47,7 @@ training:
 
 
 validation:
-  video_upload_interval: 1
+  video_upload_interval: 10
   simulation_count: 1
   simulation_depth: 300
 
@@ -57,21 +57,13 @@ networks:
   representation:
     history_length: 32
     downsample:
-      - type: "conv_layer" # in 512x288x3 out 256x144x128
+      - type: "conv_layer" # in 96x96x3 out 48x48x3
         out_channels: 128
         kernel_size: 2
         stride: 2
         padding: 0
         activation: "relu"
-      - type: "res_block"
-        out_channels: 128
-        kernel_size: 3
-        stride: 1
-        padding: 1
-        activation: "relu"
-        pool_stride: 1
-        pool_kernel_size: 1
-      - type: "res_block"
+      - type: "res_block" # in 48x48x3 out 48x48x3
         in_channels: 128
         out_channels: 128
         kernel_size: 3
@@ -80,13 +72,22 @@ networks:
         activation: "relu"
         pool_stride: 1
         pool_kernel_size: 1
-      - type: "conv_layer" # in 256x144x128 out 128x72x256
+      - type: "res_block" # in 48x48x3 out 48x48x3
+        in_channels: 128
+        out_channels: 128
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
+      - type: "conv_layer" # in 24x24x3 out 12x12x3
         out_channels: 256
         kernel_size: 2
         stride: 2
         padding: 0
         activation: "relu"
-      - type: "res_block"
+      - type: "res_block" # in 48x48x3 out 48x48x3
         in_channels: 256
         out_channels: 256
         kernel_size: 3
@@ -95,7 +96,7 @@ networks:
         activation: "relu"
         pool_stride: 1
         pool_kernel_size: 1
-      - type: "res_block"
+      - type: "res_block" # in 48x48x3 out 48x48x3
         in_channels: 256
         out_channels: 256
         kernel_size: 3
@@ -104,7 +105,7 @@ networks:
         activation: "relu"
         pool_stride: 1
         pool_kernel_size: 1
-      - type: "res_block"
+      - type: "res_block" # in 48x48x3 out 48x48x3
         in_channels: 256
         out_channels: 256
         kernel_size: 3
@@ -113,43 +114,11 @@ networks:
         activation: "relu"
         pool_stride: 1
         pool_kernel_size: 1
-      - type: "pool_layer"  # in 128x72x256 out 64x36x256
+      - type: "pool_layer" # in 12x12x3 out 6x6x3
         kernel_size: 2
         stride: 2
         padding: 0
-        pool_type: "avg"
-      - type: "res_block"
-        in_channels: 256
-        out_channels: 256
-        kernel_size: 3
-        stride: 1
-        padding: 1
-        activation: "relu"
-        pool_stride: 1
-        pool_kernel_size: 1
-      - type: "res_block"
-        in_channels: 256
-        out_channels: 256
-        kernel_size: 3
-        stride: 1
-        padding: 1
-        activation: "relu"
-        pool_stride: 1
-        pool_kernel_size: 1
-      - type: "res_block"
-        in_channels: 256
-        out_channels: 256
-        kernel_size: 3
-        stride: 1
-        padding: 1
-        activation: "relu"
-        pool_stride: 1
-        pool_kernel_size: 1
-      - type: "pool_layer" # in 64x36x256 out 32x18x256
-        kernel_size: 2
-        stride: 2
-        padding: 0
-        pool_type: "avg"
+        pool_type: "max"
     res_net:
       - in_channels: 3
         out_channels: 3
