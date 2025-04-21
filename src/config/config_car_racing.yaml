@@ -8,6 +8,7 @@ environment:
   seed: 502
   render_mode: "rgb_array"
 
+
 # Monte Carlo Tree Search (MCTS) configuration
 training_data_generator:
   num_episodes: 10                   # total number of episodes for self-play/learning
@@ -32,51 +33,123 @@ training:
   replay_buffer_size: 40
   alpha: 0.6
   betas: [0.9, 0.999]
-  look_back: 4                        # number of past states to include in the input sequence
+  look_back: 4
   roll_ahead: 5
   mini_batch_size: 256
+  reward_coefficient: 1.0 # 0.25
+  value_coefficient: 1.0 # 0.5
+  policy_coefficient: 1.0
+  min_learning_rate: 0.0001
+  total_training_steps: 1000000
+  use_mixed_precision: false
+  lr_schedule: "cosine"
+
+
 
 validation:
-  video_upload_interval: 10
-  simulation_count: 3
+  video_upload_interval: 1
+  simulation_count: 1
   simulation_depth: 300
 
 # Neural network configurations
 networks:
-  latent_shape: [6, 6, 3]
+  latent_shape: [256, 6, 6]
   representation:
+    history_length: 32
     downsample:
-      - type: "conv_layer" # in 96x96x3 out 48x48x3
-        out_channels: 3
+      - type: "conv_layer" # in 512x288x3 out 256x144x128
+        out_channels: 128
         kernel_size: 2
         stride: 2
         padding: 0
         activation: "relu"
-      - type: "res_block" # in 48x48x3 out 48x48x3
-        in_channels: 3
-        out_channels: 3
+      - type: "res_block"
+        out_channels: 128
         kernel_size: 3
         stride: 1
         padding: 1
         activation: "relu"
         pool_stride: 1
         pool_kernel_size: 1
-      - type: "pool_layer" # in 48x48x3 out 24x24x3
-        kernel_size: 2
-        stride: 2
-        padding: 0
-        pool_type: "max"
-      - type: "conv_layer" # in 24x24x3 out 12x12x3
-        out_channels: 3
+      - type: "res_block"
+        in_channels: 128
+        out_channels: 128
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
+      - type: "conv_layer" # in 256x144x128 out 128x72x256
+        out_channels: 256
         kernel_size: 2
         stride: 2
         padding: 0
         activation: "relu"
-      - type: "pool_layer" # in 12x12x3 out 6x6x3
+      - type: "res_block"
+        in_channels: 256
+        out_channels: 256
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
+      - type: "res_block"
+        in_channels: 256
+        out_channels: 256
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
+      - type: "res_block"
+        in_channels: 256
+        out_channels: 256
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
+      - type: "pool_layer"  # in 128x72x256 out 64x36x256
         kernel_size: 2
         stride: 2
         padding: 0
-        pool_type: "max"
+        pool_type: "avg"
+      - type: "res_block"
+        in_channels: 256
+        out_channels: 256
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
+      - type: "res_block"
+        in_channels: 256
+        out_channels: 256
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
+      - type: "res_block"
+        in_channels: 256
+        out_channels: 256
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
+      - type: "pool_layer" # in 64x36x256 out 32x18x256
+        kernel_size: 2
+        stride: 2
+        padding: 0
+        pool_type: "avg"
     res_net:
       - in_channels: 3
         out_channels: 3
@@ -99,8 +172,6 @@ networks:
     reward_net:
       - out_features: 128
         activation: "relu"
-      - out_features: 1
-        activation: "relu"
   prediction:
     res_net:
       - in_channels: 3
@@ -113,8 +184,12 @@ networks:
         pool_kernel_size: 1
 
     value_net:
-      - out_features: 1
+      - out_features: 256
+        activation: "relu"
+      - out_features: 128
         activation: "relu"
     policy_net:
-      - out_features: 5
+      - out_features: 256
+        activation: "relu"
+      - out_features: 256
         activation: "relu"
