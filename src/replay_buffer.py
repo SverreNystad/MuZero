@@ -91,6 +91,10 @@ class ReplayBuffer:
         batch = []
         for idx in indices:
             batch.append(self.episode_buffer[idx][0])
+
+        sampling_entropy = -np.dot(probs, np.log(np.array(probs, dtype=np.float32) + 1e-8))
+        wandb.log({"replay/sampling_entropy": sampling_entropy})
+
         return batch, indices
 
     def update_priorities(self, indices: list[int], new_errors: list[float]) -> None:
