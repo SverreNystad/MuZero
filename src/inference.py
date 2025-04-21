@@ -39,6 +39,7 @@ def model_simulation(
         prediction_network=pred_net,
         actions=_make_actions_tensor(env, device),
         config=mcts_config,
+        device=device,
     )
     running_reward = 0.0
     frames = []
