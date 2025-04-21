@@ -35,6 +35,7 @@ pip install -r requirements.txt
 echo "Downloaded dependencies:"
 pip freeze
 
+ray start --head
 # Run the Python script
 python main.py
 
