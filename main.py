@@ -1,6 +1,7 @@
 import random
 
 import numpy as np
+import ray
 import torch
 
 SEED = 0
@@ -31,11 +32,14 @@ from src.neural_networks.neural_network import (  # noqa: E402
 from src.replay_buffer import ReplayBuffer  # noqa: E402
 from src.training import NeuralNetworkManager  # noqa: E402
 from src.training_data_generator import (  # noqa: E402
+    Episode,
     TrainingDataGenerator,
+    calculate_epsilon,
     save_training_data,
 )
 
 
+@ray.remote
 @torch.no_grad()
 def generate_training_data(
     repr_net: RepresentationNetwork,
@@ -44,8 +48,8 @@ def generate_training_data(
     config: Configuration,
     device: DeviceLikeType = "cpu",
     training_steps: int = 0,
-    save_episodes: bool = True,
-) -> None:
+    save_data: bool = True,
+) -> list[Episode]:
     """
     Generate training data for the training loop.
     """
@@ -65,12 +69,7 @@ def generate_training_data(
     # Generate the training data.
     episodes = training_data_generator.generate_training_data(training_steps)
 
-    wandb.log(
-        {
-            "epsilon": training_data_generator._calculate_epsilon(training_steps),
-        }
-    )
-    if save_episodes:
+    if save_data:
         path = save_training_data(episodes)
         print(f"Training data saved to {path}")
     return episodes
@@ -91,7 +90,7 @@ def train_model(
     nnm = NeuralNetworkManager(config.training, repr_net, dyn_net, pred_net, device)
 
     final_loss = nnm.train(replay_buffer)
-    return nnm.save_models(final_loss, config.environment, False)
+    return nnm.save_models(final_loss, config.environment, False, True)
 
 
 def generate_train_model_loop(
@@ -120,13 +119,38 @@ def generate_train_model_loop(
         config=config.networks.prediction,
     ).to(device)
 
-    wandb.watch(repr_net, log="all")
-    wandb.watch(dyn_net, log="all")
-    wandb.watch(pred_net, log="all")
-    replay_buffer = ReplayBuffer(config.training.replay_buffer_size, config.training.batch_size, config.training.alpha)
+    # Make generating ray remote
+    print(ray.available_resources())
+    cpus = ray.available_resources().get("CPU", 1)
+    gpus = ray.available_resources().get("GPU", 0)
+    print(f"CPUs: {cpus}, GPUs: {gpus}")
+    replay_buffer = ReplayBuffer.remote(config.training.replay_buffer_size, config.training.batch_size, config.training.alpha)
+
     for i in trange(n):
-        episodes = generate_training_data(repr_net, dyn_net, pred_net, config, device, i, False)
-        replay_buffer.add_episodes(episodes)
+        # Store object references for the training data.
+        repr_net_ref = ray.put(repr_net)
+        dyn_net_ref = ray.put(dyn_net)
+        pred_net_ref = ray.put(pred_net)
+        device_ref = ray.put(device)
+
+        object_refs = []
+        for j in range(10):
+            object_ref = generate_training_data.remote(
+                repr_net_ref, dyn_net_ref, pred_net_ref, config, device_ref, i, save_data=False
+            )
+            object_refs.append(object_ref)
+        print(f"Waiting for {len(object_refs)} training data to be generated.")
+        # Wait for the training data to be generated. This is a blocking call. Maybe use wait instead?
+        episodes_batches = ray.get(object_refs)
+        # Flatten the list of lists.
+        episodes = [episode for batch in episodes_batches for episode in batch]
+
+        replay_buffer.add_episodes.remote(episodes)
+        wandb.log(
+            {
+                "epsilon": calculate_epsilon(config.training_data_generator, i),
+            }
+        )
 
         repr_net, dyn_net, pred_net = train_model(repr_net, dyn_net, pred_net, config, replay_buffer, device)
 
@@ -177,19 +201,26 @@ def _profile_code(func: Callable, *args, **kwargs) -> None:
 
 
 if __name__ == "__main__":
+    # Initialize Ray.
+    context = ray.init(
+        address="auto",
+        # num_cpus=...,
+        # num_gpus=1,
+        runtime_env={
+            "working_dir": ".",
+        },
+    )
+    print(f"Ray initialized with context: \n{context}")
     config = load_config("config_flappy_bird.yaml")
     load_dotenv()
     WANDB_API_KEY = os.getenv("WANDB_API_KEY")
     wandb.login(key=WANDB_API_KEY)
     wandb.init(
         project=f"muzero - {config.project_name}",
-        # mode="disabled",
-        # Track hyperparameters and run metadata.
+        mode="disabled",
         config=config,
     )
 
-    # _profile_code(generate_training_data)
-    # _profile_code(train_model)
     generate_train_model_loop(1000, config)
 
     wandb.finish()

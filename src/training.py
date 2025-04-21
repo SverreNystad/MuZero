@@ -4,6 +4,7 @@ import random
 import re
 
 import matplotlib.pyplot as plt
+import ray
 import torch
 import torch.nn.functional as F
 from torch import Tensor
@@ -68,7 +69,8 @@ class NeuralNetworkManager:
         batch_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
 
         for mb in trange(self.mbs):
-            current_batch, indices = replay_buffer.sample_batch()
+            ref = replay_buffer.sample_batch.remote()
+            current_batch, indices = ray.get(ref)
 
             current_batch = self._filter_for_valid_episodes(current_batch)
 
@@ -119,7 +121,7 @@ class NeuralNetworkManager:
                 wandb.log({"batch_loss": batch_loss.item()})
 
                 # Update replay buffer priorities
-                replay_buffer.update_priorities(ep_indices_used, errors_for_priorities)
+                replay_buffer.update_priorities.remote(ep_indices_used, errors_for_priorities)
 
         return batch_loss.item()
 
@@ -267,6 +269,7 @@ class NeuralNetworkManager:
         final_loss_val: float = 0.0,
         env_config: EnvironmentConfig = None,
         show_plot: bool = True,
+        shall_upload: bool = False,
     ) -> tuple[RepresentationNetwork, DynamicsNetwork, PredictionNetwork]:
         """
         Save the neural networks to disk in /models/<counter>_<datetime>/.
@@ -283,6 +286,11 @@ class NeuralNetworkManager:
         torch.save(self.repr_net.state_dict(), os.path.join(model_path, "repr.pth"))
         torch.save(self.dyn_net.state_dict(), os.path.join(model_path, "dyn.pth"))
         torch.save(self.pred_net.state_dict(), os.path.join(model_path, "pred.pth"))
+        if shall_upload:
+            print("Uploading model to wandb...")
+            wandb.save(os.path.join(model_path, "repr.pth"))
+            wandb.save(os.path.join(model_path, "dyn.pth"))
+            wandb.save(os.path.join(model_path, "pred.pth"))
 
         # Write hyperparameters and final loss into a text file
         info_path = os.path.join(BASE_PATH, "info/" + folder_name)

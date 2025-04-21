@@ -1,0 +1,90 @@
+runtime:
+  use_cuda: true
+# Environment Configuration
+environment:
+  type: "ConnectFour"
+  seed: 502
+  render_mode: "rgb_array"
+
+# Monte Carlo Tree Search (MCTS) configuration
+training_data_generator:
+  num_episodes: 10                   # total number of episodes for self-play/learning
+  max_steps_per_episode: 50
+  total_time: 3600
+  mcts:
+      selection_strategy: "puct"          # can be "uct" or "puct"
+      max_iterations: 50                       # maximum iterations (set to 0 if using time-based termination)
+      max_time: 100.0                      # maximum search time per move (in seconds)
+      depth: 1
+      discount_factor: 0.998
+
+
+# Training hyperparameters
+training:
+  learning_rate: 0.001
+  epochs: 100
+  batch_size: 32
+  betas: [0.9, 0.999]
+  look_back: 4                        # number of past states to include in the input sequence
+  roll_ahead: 5
+  mini_batch_size: 256
+
+# Neural network configurations
+networks:
+  latent_shape: [2, 3, 3]
+  representation:
+    downsample:
+      - type: "conv_layer" # in  6x7x2 out 3x3x2
+        out_channels: 2
+        kernel_size: 2
+        stride: 2
+        padding: 1
+        activation: "relu"
+      - type: "res_block" # in 3x3x2 out 3x3x2
+        in_channels2: 2
+        out_channels: 3
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
+    res_net:
+      - in_channels: 2
+        out_channels: 3
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
+  dynamics:
+    res_net:
+      - in_channels: 2
+        out_channels: 3
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
+    reward_net:
+      - out_features: 1
+        activation: "relu"
+  prediction:
+    res_net:
+      - in_channels: 2
+        out_channels: 3
+        kernel_size: 3
+        stride: 1
+        padding: 1
+        activation: "relu"
+        pool_stride: 1
+        pool_kernel_size: 1
+
+    value_net:
+      - out_features: 1
+        activation: "relu"
+    policy_net:
+      - out_features: 5
+        activation: "relu"

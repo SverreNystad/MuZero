@@ -10,7 +10,7 @@ environment:
 
 # Monte Carlo Tree Search (MCTS) configuration
 training_data_generator:
-  num_episodes: 10                   # total number of episodes for self-play/learning
+  num_episodes: 2                   # total number of episodes for self-play/learning
   max_steps_per_episode: 500
   total_time: 3600
   epsilon: 1.0

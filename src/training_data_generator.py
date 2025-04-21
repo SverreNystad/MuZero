@@ -76,6 +76,8 @@ class TrainingDataGenerator:
         self.pred_net = pred_net
         self.device = device
 
+        self.config = config
+
         self.num_episodes: int = config.num_episodes  # N_e
         self.max_steps: int = config.max_steps_per_episode  # N_es
         self.mcts: MCTS = create_mcts(
@@ -150,7 +152,7 @@ class TrainingDataGenerator:
         """
 
         # Compute decayed epsilon, ensuring it does not fall below epsilon_end.
-        epsilon = self._calculate_epsilon(training_steps)
+        epsilon = calculate_epsilon(self.config, training_steps)
 
         # With probability epsilon choose a random action, otherwise choose the greedy action.
         action: int
@@ -161,11 +163,12 @@ class TrainingDataGenerator:
             action = int(policy.argmax().item())
         return action
 
-    def _calculate_epsilon(self, training_steps: int) -> float:
-        """
-        Calculate the decayed epsilon value based on the number of training steps.
-        """
-        return max(self.epsilon * (self.epsilon_decay**training_steps), 0.0001)
+
+def calculate_epsilon(config: TrainingDataGeneratorConfig, training_steps: int) -> float:
+    """
+    Calculate the decayed epsilon value based on the number of training steps.
+    """
+    return max(config.epsilon * (config.epsilon_decay**training_steps), 0.0001)
 
 
 def _make_actions_tensor(env: Environment, device) -> Tensor:

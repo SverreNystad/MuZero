@@ -19,9 +19,11 @@ class ConnectFour(Environment):
     def __init__(self, config: ConnectFourConfig, device: DeviceLikeType):
         self.env = connect_four_v3.env(render_mode=config.render_mode)
         self.env.reset(seed=config.seed)
-        self.observation_space = self.env.observation_space("player_0")
-        self.device = device
         self.to_play = self.env.agent_selection
+        self.observation_space = self.env.observation_space(self.to_play)
+        self.device = device
+
+        self.config = config
 
     def get_to_play(self) -> int:
         if self.to_play == "player_0":
@@ -43,12 +45,13 @@ class ConnectFour(Environment):
     def step(self, action: int) -> tuple[Tensor, float, bool]:
         self.env.step(action)
         self.to_play = self.env.agent_selection
+        self.observation_space = self.env.observation_space(self.to_play)
 
-        observation, reward, termination, _, _ = self.env.last()
+        observation, reward, termination, truncated, _ = self.env.last()
         observation_t = from_numpy(observation["observation"]).to(self.device)
         observation_t = observation_t.float().permute(2, 0, 1)
         observation_t = observation_t.unsqueeze(0)
-        return observation_t, reward, termination
+        return observation_t, reward, (termination or truncated)
 
     def get_state(self) -> Tensor:
         observation = self.env.last()[0]
