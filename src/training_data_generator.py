@@ -87,6 +87,7 @@ class TrainingDataGenerator:
         )
         self.epsilon: float = config.epsilon
         self.epsilon_decay: float = config.epsilon_decay
+        self.config = config
 
     def generate_training_data(self, training_steps: int = 0) -> list[Episode]:
         """
@@ -154,7 +155,7 @@ class TrainingDataGenerator:
         # With probability epsilon choose a random action, otherwise choose the greedy action.
         action: int
         if random.random() < epsilon:
-            action = numpy.random.choice(policy.shape[0])
+            action = numpy.random.choice(policy.shape[0], p=self.config.random_action_probability)
         else:
             # Choose the action with the highest visit count.
             action = int(policy.argmax().item())
