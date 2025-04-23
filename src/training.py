@@ -50,11 +50,11 @@ class NeuralNetworkManager:
         self.pred_net = pred_net
         self.loss_history = []
 
-        self.optimizer = torch.optim.Adam(
+        self.optimizer = torch.optim.SGD(
             list(self.repr_net.parameters()) + list(self.dyn_net.parameters()) + list(self.pred_net.parameters()),
             lr=config.learning_rate,
             weight_decay=config.weight_decay,
-            betas=config.betas,
+            # betas=config.betas,
         )
 
         self.device = device
