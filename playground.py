@@ -1,20 +1,51 @@
+import pygame
 from src.config.config_loader import load_config
 from src.environments.factory import create_environment
-from src.inference import model_simulation
-from src.neural_networks.neural_network import load_networks
 
-config = load_config("config.yaml")
+
+config = load_config("config_flappy_bird.yaml")
 config.environment.render_mode = "human"
 env = create_environment(config.environment)
 
+print(env.get_state().shape)
+
 inference_simulation_depth = 1000
 num_actions = len(env.get_action_space())
-latent_shape = config.networks.latent_shape
+# latent_shape = config.networks.latent_shape
 
-model_folder_path = "training_runs/models/6_20250331_103553"
-observation_space = env.get_observation_space()
-num_actions = len(env.get_action_space())
-repr_net, dyn_net, pred_net = load_networks(model_folder_path)
 
-running_reward = model_simulation(env, repr_net, pred_net, inference_simulation_depth)
-print(f"Running reward: {running_reward}")
+def demo_flappy():
+    # Initialize the environment
+
+    while True:
+        env.reset()
+        done = False
+        step = 0
+
+        cum_reward = 0
+
+        while not done:
+            step += 1
+            # Sample a random action
+
+            # action = random.choice(env.get_action_space())
+            key = pygame.key.get_pressed()
+            if key[pygame.K_SPACE]:
+                action = 1
+            else:
+                action = 0
+
+            # Step the environment
+            _, reward, done = env.step(action)
+
+            cum_reward += reward
+            # Render the environment
+            env.render()
+
+        print(cum_reward)
+
+    # Close the environment
+    env.close()
+
+if __name__ == "__main__":
+    demo_flappy()
