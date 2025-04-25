@@ -43,8 +43,15 @@ class ReplayBuffer:
 
         # Log the average amount of states in each episode
         avg_states = np.mean([len(ep.chunks) for ep, _ in self.episode_buffer])
-        median_reward = np.median([[chunk.reward for chunk in ep.chunks] for ep, _ in self.episode_buffer])
-        max_reward = np.max([[chunk.reward for chunk in ep.chunks] for ep, _ in self.episode_buffer])
+        rewards = [
+            sum(chunk.reward for chunk in ep.chunks) for ep, _ in self.episode_buffer
+        ]  # [chunk.reward for ep, _ in self.episode_buffer for chunk in ep.chunks]
+        if len(rewards) > 0:
+            median_reward = np.median(rewards)
+            max_reward = np.max(rewards)
+        else:
+            median_reward = 0
+            max_reward = 0
 
         wandb.log(
             {
