@@ -1,120 +1,115 @@
-import numpy as np
+from dataclasses import dataclass
 
-import wandb
+import numpy as np
+import torch
+
 from src.training_data_generator import Episode
 
-# Set the random seed for reproducibility
-np.random.seed(0)
+
+@dataclass
+class _Index:
+    game_id: int  # episode index in self._games
+    pos: int  # chunk index inside that episode
 
 
 class ReplayBuffer:
-    def __init__(self, buffer_size: int, batch_size: int, alpha=0.6):
-        """
-        Prioritized Replay Buffer.
-        Args:
-            buffer_size(int): Max number of episodes to store
-            batch_size(int): Sample size
-            alpha(float): Exponent for how strongly to use priorities (0=uniform, 1=full priority)
-        """
-        if buffer_size <= 0:
-            raise ValueError("Buffer size must be greater than 0.")
-        if batch_size <= 0:
-            raise ValueError("Batch size must be greater than 0.")
-        if buffer_size < batch_size:
-            raise ValueError("Buffer size must be greater than batch size.")
+    """
+    Two–level Prioritised Experience Replay (games, then chunks)
+    ------------------------------------------------------------
+    * every chunk has its own priority p_i >= ε
+    * a game priority is max(p_i) inside that game
+    * sampling:   P(game)=p_game^α / Σ;  P(pos|game)=p_i^α / Σ;
+    * importance-weights w_i ∝ (1/N·P(game)·P(pos|game))^β
+    """
 
-        self.buffer_capacity = buffer_size
-        self.batch_size = batch_size
+    def __init__(
+        self,
+        max_episodes: int,
+        max_steps: int,
+        alpha: float = 0.6,
+        beta_start: float = 0.4,
+        beta_frames: int = 500_000,
+        eps: float = 1e-6,
+    ):
+        self.max_episodes = max_episodes
+        self.max_steps = max_steps  # used for β-annealing
         self.alpha = alpha
+        self.beta_start = beta_start
+        self.beta_frames = beta_frames
+        self.eps = eps
 
-        # Store (episode, priority)
-        self.episode_buffer: list[tuple[Episode, float]] = []
-        self.max_priority = 1.0
+        self._games: list[Episode] = []
+        self._priorities: list[np.ndarray] = []  # one 1-D array per game
+        self._game_p: list[float] = []  # max priority per game
+        self._frame = 0  # global counter for β
+
+    # --------------------------------------------------------------------- #
+    # public API
+    # --------------------------------------------------------------------- #
 
     def add_episodes(self, episodes: list[Episode]) -> None:
-        """Insert new episodes at max priority so they have a chance to be sampled."""
-        for ep in episodes:
-            self.episode_buffer.append((ep, self.max_priority))
+        """Insert a new game; new chunks get max priority so they are seen once."""
+        for episode in episodes:
+            prios = np.ones(len(episode.chunks), dtype=np.float32)
+            if self._game_p:
+                prios *= max(self._game_p)  # current max
+            self._insert(episode, prios)
+            self._trim()
 
-        # Cap size
-        over_capacity = len(self.episode_buffer) - self.buffer_capacity
-        if over_capacity > 0:
-            self.episode_buffer = self.episode_buffer[over_capacity:]
+    def sample_batch(self, batch_size: int):
+        """Return lists (episodes, positions, weights) ready for training."""
+        if not self._games:
+            return [], [], torch.tensor([])
 
-        # Log the average amount of states in each episode
-        avg_states = np.mean([len(ep.chunks) for ep, _ in self.episode_buffer])
-        rewards = [
-            sum(chunk.reward for chunk in ep.chunks) for ep, _ in self.episode_buffer
-        ]  # [chunk.reward for ep, _ in self.episode_buffer for chunk in ep.chunks]
-        if len(rewards) > 0:
-            median_reward = np.median(rewards)
-            max_reward = np.max(rewards)
-        else:
-            median_reward = 0
-            max_reward = 0
+        beta = self._annealed_beta()
+        # --- sample games --------------------------------------------------
+        game_probs = self._scaled(np.array(self._game_p))
+        game_indices = np.random.choice(len(self._games), batch_size, p=game_probs)
+        # --- sample positions inside each game -----------------------------
+        samples: list[tuple[Episode, int, float]] = []
+        for g in game_indices:
+            pos_probs = self._scaled(self._priorities[g])
+            pos = np.random.choice(len(pos_probs), p=pos_probs)
+            p_sample = game_probs[g] * pos_probs[pos]
+            weight = (1.0 / (len(self) * p_sample)) ** beta
+            samples.append((self._games[g], pos, weight))
 
-        wandb.log(
-            {
-                "replay/average_states_per_episode": avg_states,
-                "replay/total_episodes_in_buffer": len(self.episode_buffer),
-                "replay/max_reward": max_reward,
-                "replay/median_reward": median_reward,
-            }
-        )
+        # normalise weights
+        weights = torch.tensor([w for *_, w in samples], dtype=torch.float32)
+        weights /= weights.max()
 
-    def sample_batch(self) -> tuple[list[Episode], list[int]]:
-        """
-        Sample a batch of episodes from the buffer.
-        The sampling is done based on the priorities of the episodes.
-        The higher the priority, the more likely the episode is to be sampled.
+        episodes = [e for (e, _, _) in samples]
+        positions = [p for (_, p, _) in samples]
+        return episodes, positions, weights
 
-        Indices of the sampled episodes are also returned for updating priorities.
-
-        Returns:
-            batch(list[Episode]): Sampled episodes
-            indices(list[int]): Indices of the sampled episodes in the buffer
-        """
-        if not self.episode_buffer:
-            return ([], [])
-
-        # Collect priorities
-        priorities = [p for _, p in self.episode_buffer]
-        scaled = [p**self.alpha for p in priorities]
-
-        # Build distribution & sample
-        total = sum(scaled)
-        if total < 1e-8:
-            # fallback to uniform if all priorities are ~0
-            probs = [1.0 / len(scaled)] * len(scaled)
-        else:
-            probs = [v / total for v in scaled]
-
-        indices = np.random.choice(
-            len(self.episode_buffer),
-            size=min(self.batch_size, len(self.episode_buffer)),
-            replace=False,
-            p=probs,
-        )
-        batch = []
-        for idx in indices:
-            batch.append(self.episode_buffer[idx][0])
-
-        sampling_entropy = -np.dot(probs, np.log(np.array(probs, dtype=np.float32) + 1e-8))
-        wandb.log({"replay/sampling_entropy": sampling_entropy})
-
-        return batch, indices
-
-    def update_priorities(self, indices: list[int], new_errors: list[float]) -> None:
-        """
-        After training, update the priorities of the sampled episodes.
-        new_priority often = abs(td_error) + 1e-6
-        """
-        for idx, err in zip(indices, new_errors):
-            updated = abs(err) + 1e-6
-            if updated > self.max_priority:
-                self.max_priority = updated
-            ep, _ = self.episode_buffer[idx]
-            self.episode_buffer[idx] = (ep, updated)
+    def update_priorities(self, batch_games: list[int], batch_pos: list[int], td_errors: np.ndarray) -> None:
+        """Write back absolute TD-errors."""
+        for g, p, err in zip(batch_games, batch_pos, td_errors):
+            prio = abs(err) + self.eps
+            self._priorities[g][p] = prio
+            self._game_p[g] = self._priorities[g].max()
 
     def __len__(self):
-        return len(self.episode_buffer)
+        return sum(map(len, self._priorities))
+
+    # --------------------------------------------------------------------- #
+    # internal helpers
+    # --------------------------------------------------------------------- #
+    def _insert(self, ep: Episode, prios: np.ndarray):
+        self._games.append(ep)
+        self._priorities.append(prios)
+        self._game_p.append(prios.max())
+
+    def _trim(self):
+        while len(self._games) > self.max_episodes:
+            self._games.pop(0)
+            self._priorities.pop(0)
+            self._game_p.pop(0)
+
+    def _scaled(self, x: np.ndarray):
+        scaled = x**self.alpha
+        return scaled / scaled.sum()
+
+    def _annealed_beta(self):
+        self._frame += 1
+        return min(1.0, self.beta_start + (1 - self.beta_start) * self._frame / self.beta_frames)

@@ -125,6 +125,11 @@ class TrainingConfig(BaseModel):
     total_training_steps: int
     lr_schedule: str  # e.g. "linear", "cosine", "step"
     optimizer: str = "sgd"  # e.g.  "sgd", "adam", "adamw","rmsprop"
+    momentum: float = 0.9
+    # scheduler_milestones = Field(default=[8000, 20000])
+    scheduler_gamma: float = 0.97
+    scheduler_T_max: int = 40000  # total optimiser steps you expect
+    scheduler_eta_min: float = 1e-5  # final LR (10-4 × LR₀)
 
 
 class RunTimeConfig(BaseModel):

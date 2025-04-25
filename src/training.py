@@ -58,6 +58,7 @@ class NeuralNetworkManager:
                     list(self.repr_net.parameters()) + list(self.dyn_net.parameters()) + list(self.pred_net.parameters()),
                     lr=config.learning_rate,
                     weight_decay=config.weight_decay,
+                    momentum=config.momentum,
                 )
             case "adam":
                 self.optimizer = torch.optim.Adam(
@@ -108,88 +109,106 @@ class NeuralNetworkManager:
 
     def train(self, replay_buffer: ReplayBuffer) -> float:
         """
-        Train MuZero's neural networks using Backpropagation Through Time (BPTT).
-        Returns average batch loss.
+        One full optimisation pass over ``self.mbs`` samples drawn with chunk–level
+        Prioritised Experience Replay.
+
+        Parameters
+        ----------
+        replay_buffer : ReplayBuffer
+            The chunk-level PER buffer (see replay_buffer.py).
+
+        Returns
+        -------
+        float
+            The averaged total loss for the last mini-batch (for convenience when
+            scheduling LR, etc.).
         """
-        for mb in trange(self.mbs):
-            current_batch, indices = replay_buffer.sample_batch()
-            current_batch = self._filter_for_valid_episodes(current_batch)
+        # running accumulators for W&B
+        running_total = 0.0
+        episodes_seen = 0
 
-            # Zero gradients
+        for _ in trange(self.mbs):
+            batch_eps, batch_pos, is_weights = replay_buffer.sample_batch(self.mbs)
+
+            if not batch_eps:  # buffer still warming-up
+                return 0.0
+
             self.optimizer.zero_grad()
+            batch_total_loss = torch.zeros(1, device=self.device)
+            batch_policy_loss = torch.zeros(1, device=self.device)
+            batch_value_loss = torch.zeros(1, device=self.device)
+            batch_reward_loss = torch.zeros(1, device=self.device)
 
-            # Batch-level accumulators
-            batch_total_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
-            batch_policy_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
-            batch_value_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
-            batch_reward_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
-            errors_for_priorities = []
-            ep_indices_used = []
+            td_errors = []
+            buf_game_indices = []
+            buf_pos_indices = []
 
-            for local_idx, episode in enumerate(current_batch):
-                # local_idx is the index within the mini-batch,
-                # but we also want the "global" index from 'indices' we got from the buffer.
-                global_idx = indices[local_idx]
+            for ep_idx, (episode, pos, w) in enumerate(zip(batch_eps, batch_pos, is_weights)):
                 max_k = len(episode.chunks) - (self.roll_ahead + 1)
-                if max_k < 0:
-                    # Not enough steps to do roll_ahead; skip
-                    continue
+                if pos > max_k:
+                    continue  # skip invalid sample (should be rare)
 
-                k = random.randrange(max_k + 1)
-                start_idx = max(0, k - self.lookback)
+                start_idx = max(0, pos - self.lookback)
 
-                Sb_k = [episode.chunks[i].state for i in range(start_idx, k + 1)]
-                Ab_k = [episode.chunks[i].best_action for i in range(k, k + self.roll_ahead)]
-                Pb_k = [episode.chunks[i].policy for i in range(k, k + self.roll_ahead + 1)]
-                Vb_k = [episode.chunks[i].value for i in range(k, k + self.roll_ahead + 1)]
-                Rb_k = [episode.chunks[i + 1].reward for i in range(k, k + self.roll_ahead)]
+                Sb_k = [episode.chunks[i].state for i in range(start_idx, pos + 1)]
+                Ab_k = [episode.chunks[i].best_action for i in range(pos, pos + self.roll_ahead)]
+                Pb_k = [episode.chunks[i].policy for i in range(pos, pos + self.roll_ahead + 1)]
+                Vb_k = [episode.chunks[i].value for i in range(pos, pos + self.roll_ahead + 1)]
+                Rb_k = [episode.chunks[i + 1].reward for i in range(pos, pos + self.roll_ahead)]
 
-                # Get component losses
                 p_loss, v_loss, r_loss = self.bptt(Sb_k, Ab_k, (Pb_k, Vb_k, Rb_k))
-                step_loss = p_loss + v_loss + r_loss
 
-                batch_policy_loss += p_loss
-                batch_value_loss += v_loss
-                batch_reward_loss += r_loss
+                # apply importance-sampling weight
+                weight = w.to(self.device)
+                step_loss = (p_loss + v_loss + r_loss) * weight
+
+                batch_policy_loss += p_loss * weight
+                batch_value_loss += v_loss * weight
+                batch_reward_loss += r_loss * weight
                 batch_total_loss += step_loss
 
-                errors_for_priorities.append(step_loss.detach().abs().item())
-                ep_indices_used.append(global_idx)
+                td_errors.append(step_loss.detach().abs().item())
+                buf_game_indices.append(replay_buffer._games.index(episode))
+                buf_pos_indices.append(pos)
+                episodes_seen += 1
 
-            if len(current_batch) > 0:
-                # Average over episodes
-                batch_policy_loss /= len(current_batch)
-                batch_value_loss /= len(current_batch)
-                batch_reward_loss /= len(current_batch)
-                batch_total_loss /= len(current_batch)
+            if episodes_seen == 0:
+                continue  # all samples were skipped for length reasons
 
-                # Backprop and step
-                batch_total_loss.backward()
-                self.optimizer.step()
+            # normalise over the number of episodes processed this loop
+            batch_policy_loss /= episodes_seen
+            batch_value_loss /= episodes_seen
+            batch_reward_loss /= episodes_seen
+            batch_total_loss /= episodes_seen
 
-                # Scheduler step
-                if self.scheduler:
-                    if isinstance(self.scheduler, lr_scheduler.ReduceLROnPlateau):
-                        self.scheduler.step(batch_total_loss)
-                    else:
-                        self.scheduler.step()
+            batch_total_loss.backward()
+            self.optimizer.step()
 
-                # Log to W&B
-                wandb.log(
-                    {
-                        "loss/batch": batch_total_loss.item(),
-                        "loss/policy": batch_policy_loss.item(),
-                        "loss/value": batch_value_loss.item(),
-                        "loss/reward": batch_reward_loss.item(),
-                        "learning_rate": self.optimizer.param_groups[0]["lr"],
-                    }
-                )
+            if self.scheduler:
+                if isinstance(self.scheduler, lr_scheduler.ReduceLROnPlateau):
+                    self.scheduler.step(batch_total_loss)
+                else:
+                    self.scheduler.step()
 
-                # Record history and priorities
-                self.loss_history.append(batch_total_loss.item())
-                replay_buffer.update_priorities(ep_indices_used, errors_for_priorities)
+            # ---- WandB logging -------------------------------------------
+            wandb.log(
+                {
+                    "loss/batch": batch_total_loss.item(),
+                    "loss/policy": batch_policy_loss.item(),
+                    "loss/value": batch_value_loss.item(),
+                    "loss/reward": batch_reward_loss.item(),
+                    "learning_rate": self.optimizer.param_groups[0]["lr"],
+                }
+            )
 
-        return batch_total_loss.item()
+            # ---- PER priority update -------------------------------------
+            replay_buffer.update_priorities(buf_game_indices, buf_pos_indices, td_errors)
+
+            # keep running totals for return value
+            running_total += batch_total_loss.item()
+
+        # mean of last optimisation cycle
+        return running_total / max(1, self.mbs)
 
     def _filter_for_valid_episodes(self, episode_history: list[Episode]) -> list[Episode]:
         valid_episodes = []
