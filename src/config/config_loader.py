@@ -124,6 +124,7 @@ class TrainingConfig(BaseModel):
     min_learning_rate: float
     total_training_steps: int
     lr_schedule: str  # e.g. "linear", "cosine", "step"
+    optimizer: str = "sgd"  # e.g.  "sgd", "adam", "adamw","rmsprop"
 
 
 class RunTimeConfig(BaseModel):

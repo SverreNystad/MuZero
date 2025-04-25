@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torch import Tensor
+from torch.optim import lr_scheduler
 from tqdm import trange
 
 import wandb
@@ -50,78 +51,145 @@ class NeuralNetworkManager:
         self.pred_net = pred_net
         self.loss_history = []
 
-        self.optimizer = torch.optim.SGD(
-            list(self.repr_net.parameters()) + list(self.dyn_net.parameters()) + list(self.pred_net.parameters()),
-            lr=config.learning_rate,
-            weight_decay=config.weight_decay,
-            # betas=config.betas,
-        )
+        # Set up the optimizer based on the chosen type
+        match config.optimizer.lower():
+            case "sgd":
+                self.optimizer = torch.optim.SGD(
+                    list(self.repr_net.parameters()) + list(self.dyn_net.parameters()) + list(self.pred_net.parameters()),
+                    lr=config.learning_rate,
+                    weight_decay=config.weight_decay,
+                )
+            case "adam":
+                self.optimizer = torch.optim.Adam(
+                    list(self.repr_net.parameters()) + list(self.dyn_net.parameters()) + list(self.pred_net.parameters()),
+                    lr=config.learning_rate,
+                    betas=config.betas,
+                    weight_decay=config.weight_decay,
+                )
+            case "adamw":
+                self.optimizer = torch.optim.AdamW(
+                    list(self.repr_net.parameters()) + list(self.dyn_net.parameters()) + list(self.pred_net.parameters()),
+                    lr=config.learning_rate,
+                    betas=config.betas,
+                    weight_decay=config.weight_decay,
+                )
+            case "rmsprop":
+                self.optimizer = torch.optim.RMSprop(
+                    list(self.repr_net.parameters()) + list(self.dyn_net.parameters()) + list(self.pred_net.parameters()),
+                    lr=config.learning_rate,
+                    weight_decay=config.weight_decay,
+                )
+            case _:
+                raise ValueError(f"Unsupported optimizer type: {config.optimizer}")
+
+        # Set up the Learning rate decay on the chosen type
+        self.scheduler = None
+        match config.lr_schedule.lower():
+            case "step":
+                self.scheduler = lr_scheduler.StepLR(
+                    self.optimizer, step_size=config.scheduler_step_size, gamma=config.scheduler_gamma
+                )
+            case "multi_step":
+                self.scheduler = lr_scheduler.MultiStepLR(
+                    self.optimizer, milestones=config.scheduler_milestones, gamma=config.scheduler_gamma
+                )
+            case "exponential":
+                self.scheduler = lr_scheduler.ExponentialLR(self.optimizer, gamma=config.scheduler_gamma)
+            case "cosine_annealing":
+                self.scheduler = lr_scheduler.CosineAnnealingLR(
+                    self.optimizer, T_max=config.scheduler_T_max, eta_min=getattr(config, "scheduler_eta_min", 0)
+                )
+            case "reduce_lr_on_plateau":
+                self.scheduler = lr_scheduler.ReduceLROnPlateau(
+                    self.optimizer, mode="min", factor=config.scheduler_factor, patience=config.scheduler_patience
+                )
 
         self.device = device
 
     def train(self, replay_buffer: ReplayBuffer) -> float:
         """
         Train MuZero's neural networks using Backpropagation Through Time (BPTT).
-        After training, automatically saves the model in /models/<counter>_<datetime>/,
-        where <counter> is the next available integer after scanning existing folders.
+        Returns average batch loss.
         """
-        batch_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
-
         for mb in trange(self.mbs):
             current_batch, indices = replay_buffer.sample_batch()
-
             current_batch = self._filter_for_valid_episodes(current_batch)
 
+            # Zero gradients
             self.optimizer.zero_grad()
-            # We'll keep track of each episode's "priority error"
+
+            # Batch-level accumulators
+            batch_total_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
+            batch_policy_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
+            batch_value_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
+            batch_reward_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
             errors_for_priorities = []
             ep_indices_used = []
-
-            batch_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
 
             for local_idx, episode in enumerate(current_batch):
                 # local_idx is the index within the mini-batch,
                 # but we also want the "global" index from 'indices' we got from the buffer.
                 global_idx = indices[local_idx]
-
                 max_k = len(episode.chunks) - (self.roll_ahead + 1)
                 if max_k < 0:
                     # Not enough steps to do roll_ahead; skip
                     continue
 
                 k = random.randrange(max_k + 1)
-                start_roll_idx = max(0, k - self.lookback)
+                start_idx = max(0, k - self.lookback)
 
-                # Gather data from the chosen segment
-                Sb_k = [episode.chunks[i].state for i in range(start_roll_idx, k + 1)]
+                Sb_k = [episode.chunks[i].state for i in range(start_idx, k + 1)]
                 Ab_k = [episode.chunks[i].best_action for i in range(k, k + self.roll_ahead)]
                 Pb_k = [episode.chunks[i].policy for i in range(k, k + self.roll_ahead + 1)]
                 Vb_k = [episode.chunks[i].value for i in range(k, k + self.roll_ahead + 1)]
                 Rb_k = [episode.chunks[i + 1].reward for i in range(k, k + self.roll_ahead)]
 
-                # Compute loss for this chunk
-                step_loss = self.bptt(Sb_k, Ab_k, (Pb_k, Vb_k, Rb_k))
-                batch_loss += step_loss
+                # Get component losses
+                p_loss, v_loss, r_loss = self.bptt(Sb_k, Ab_k, (Pb_k, Vb_k, Rb_k))
+                step_loss = p_loss + v_loss + r_loss
 
-                # Convert step_loss to float for priority
-                priority_err = step_loss.detach().abs().item()
-                errors_for_priorities.append(priority_err)
+                batch_policy_loss += p_loss
+                batch_value_loss += v_loss
+                batch_reward_loss += r_loss
+                batch_total_loss += step_loss
+
+                errors_for_priorities.append(step_loss.detach().abs().item())
                 ep_indices_used.append(global_idx)
 
-            # Average loss across the mini-batch
-            effective_batch_size = len(current_batch)
-            if effective_batch_size > 0:
-                batch_loss = batch_loss / effective_batch_size
-                # Now do a single backward pass for the entire mini-batch
-                batch_loss.backward()
-                self.optimizer.step()
-                self.loss_history.append(batch_loss.item())
-                wandb.log({"batch_loss": batch_loss.item()})
+            if len(current_batch) > 0:
+                # Average over episodes
+                batch_policy_loss /= len(current_batch)
+                batch_value_loss /= len(current_batch)
+                batch_reward_loss /= len(current_batch)
+                batch_total_loss /= len(current_batch)
 
-                # Update replay buffer priorities
+                # Backprop and step
+                batch_total_loss.backward()
+                self.optimizer.step()
+
+                # Scheduler step
+                if self.scheduler:
+                    if isinstance(self.scheduler, lr_scheduler.ReduceLROnPlateau):
+                        self.scheduler.step(batch_total_loss)
+                    else:
+                        self.scheduler.step()
+
+                # Log to W&B
+                wandb.log(
+                    {
+                        "loss/batch": batch_total_loss.item(),
+                        "loss/policy": batch_policy_loss.item(),
+                        "loss/value": batch_value_loss.item(),
+                        "loss/reward": batch_reward_loss.item(),
+                        "learning_rate": self.optimizer.param_groups[0]["lr"],
+                    }
+                )
+
+                # Record history and priorities
+                self.loss_history.append(batch_total_loss.item())
                 replay_buffer.update_priorities(ep_indices_used, errors_for_priorities)
 
-        return batch_loss.item()
+        return batch_total_loss.item()
 
     def _filter_for_valid_episodes(self, episode_history: list[Episode]) -> list[Episode]:
         valid_episodes = []
@@ -136,7 +204,12 @@ class NeuralNetworkManager:
                 )
         return valid_episodes
 
-    def bptt(self, Sb_k: list[Tensor], Ab_k: list[Tensor], PVR: tuple) -> torch.Tensor:
+    def bptt(
+        self,
+        Sb_k: list[Tensor],
+        Ab_k: list[Tensor],
+        PVR: tuple[Tensor, Tensor, Tensor],
+    ) -> tuple[Tensor, Tensor, Tensor]:
         """
         Perform Backpropagation Through Time (BPTT) on MuZero's three networks.
 
@@ -146,10 +219,9 @@ class NeuralNetworkManager:
             PVR (tuple): ([π], [v], [r]) from k..k+w (policies & values),
                          and k+1..k+w (rewards).
         Returns:
-            torch.Tensor: The total (summed) loss across unrolled steps.
+            Summed (policy_loss, value_loss, reward_loss).
         """
         Pb_k, Vb_k, Rb_k = PVR
-
         history_frames = FrameRingBuffer(size=self.repr_net.history_length)
         history_frames.fill(Frame(state=Sb_k[0], action=Ab_k[0]))
         for i in range(1, len(Sb_k)):
@@ -157,95 +229,39 @@ class NeuralNetworkManager:
 
         latent_state = self.repr_net(make_history_tensor(history_frames))
 
-        total_loss = torch.zeros(1, dtype=torch.float32).to(self.device)
+        total_p = torch.zeros(1, dtype=torch.float32, device=self.device)
+        total_v = torch.zeros(1, dtype=torch.float32, device=self.device)
+        total_r = torch.zeros(1, dtype=torch.float32, device=self.device)
 
         # Unroll for self.roll_ahead steps
         for i in range(self.roll_ahead):
-            # Predict policy and value from current latent_state
-            pred_policy, pred_value = self.pred_net(latent_state)
+            pred_p, pred_v = self.pred_net(latent_state)
+            t_p = torch.tensor(Pb_k[i], dtype=torch.float32, device=self.device)
+            t_v = torch.tensor([Vb_k[i]], dtype=torch.float32, device=self.device)
+            t_r = torch.tensor([Rb_k[i]], dtype=torch.float32, device=self.device)
 
-            # Convert the single-step targets to tensors if needed
-            target_policy = Pb_k[i]
-            target_value = Vb_k[i]
-            target_reward = Rb_k[i]
+            action = Ab_k[i]
+            action = (
+                action if isinstance(action, torch.Tensor) else torch.tensor([action], dtype=torch.long, device=self.device)
+            )
+            latent_state, pred_r = self.dyn_net(latent_state, action)
 
-            if not isinstance(target_policy, torch.Tensor):
-                target_policy = torch.tensor(target_policy, dtype=torch.float32).to(self.device)
-            if not isinstance(target_value, torch.Tensor):
-                target_value = torch.tensor([target_value], dtype=torch.float32).to(self.device)
-            if not isinstance(target_reward, torch.Tensor):
-                target_reward = torch.tensor([target_reward], dtype=torch.float32).to(self.device)
+            # component losses
+            p_loss = self.policy_loss(t_p, pred_p[0])
+            v_loss = self.value_loss(t_v, pred_v[0])
+            r_loss = self.reward_loss(t_r, pred_r[0])
 
-            # Calculate the next latent state and reward
-            action_i = Ab_k[i]
-            if not isinstance(action_i, torch.Tensor):
-                action_i = torch.tensor([action_i], dtype=torch.long).to(self.device)
-            next_latent_state, pred_reward = self.dyn_net(latent_state, action_i)
+            total_p += p_loss
+            total_v += v_loss
+            total_r += r_loss
 
-            # Single-step "PVR"
-            single_step_PVR = ([target_policy], [target_value], [target_reward])
+        # final value only
+        _, final_v = self.pred_net(latent_state)
+        t_v_final = torch.tensor([Vb_k[self.roll_ahead]], dtype=torch.float32, device=self.device)
+        v_final_loss = self.value_loss(t_v_final, final_v[0])
+        total_v += v_final_loss
 
-            # Compute single-step loss
-            step_loss = self.loss(single_step_PVR, pred_reward, pred_value, pred_policy)
-            total_loss += step_loss
-
-            # Move to the next latent state
-            latent_state = next_latent_state
-
-        # Final Value at step k + roll_ahead
-        final_target_value = Vb_k[self.roll_ahead]
-        if not isinstance(final_target_value, torch.Tensor):
-            final_target_value = torch.tensor([final_target_value], dtype=torch.float32).to(self.device)
-        _, final_pred_value = self.pred_net(latent_state)
-
-        # No policy or reward for the final step, only a value
-        final_PVR = ([], [final_target_value], [])
-        final_step_loss = self.loss(final_PVR, reward=None, value=final_pred_value, policy=None)
-        total_loss += final_step_loss
-
-        return total_loss
-
-    def loss(self, PVR, reward, value, policy):
-        """
-        Calculate the loss of the neural networks.
-
-        Args:
-            PVR (tuple): A tuple of (policies, values, rewards), each a list (even if length=1).
-            reward (Tensor|None): The predicted reward from the dynamics network.
-            value (Tensor|None):  The predicted value from the prediction network.
-            policy (Tensor|None): The predicted policy from the prediction network.
-
-        Returns:
-            torch.Tensor: The summed loss for policy, value, and reward.
-        """
-        Πb_k, Vb_k, Rb_k = PVR
-        policy_loss_val = torch.zeros(1, dtype=torch.float32).to(self.device)
-        value_loss_val = torch.zeros(1, dtype=torch.float32).to(self.device)
-        reward_loss_val = torch.zeros(1, dtype=torch.float32).to(self.device)
-
-        # 1) Policy loss
-        if policy is not None and len(Πb_k) > 0:
-            target_policy = Πb_k[0]
-            # pred_policy shape: [1, num_actions]; use policy[0] to drop the batch dimension
-            policy_loss_val = self.policy_loss(target_policy, policy[0])
-
-        # 2) Value loss
-        if value is not None and len(Vb_k) > 0:
-            target_value = Vb_k[0]
-            value_loss_val = self.value_loss(target_value, value[0])
-
-        # 3) Reward loss
-        if reward is not None and len(Rb_k) > 0:
-            target_reward = Rb_k[0]
-            reward_loss_val = self.reward_loss(target_reward, reward[0])
-        wandb.log(
-            {
-                "policy_loss": policy_loss_val.item(),
-                "value_loss": value_loss_val.item(),
-                "reward_loss": reward_loss_val.item(),
-            }
-        )
-        return policy_loss_val + value_loss_val + reward_loss_val
+        return total_p, total_v, total_r
 
     def reward_loss(self, target_reward: Tensor, pred_reward: Tensor) -> Tensor:
         """Compute the MSE between target reward and predicted reward."""
