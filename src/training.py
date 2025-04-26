@@ -58,6 +58,7 @@ class NeuralNetworkManager:
                     list(self.repr_net.parameters()) + list(self.dyn_net.parameters()) + list(self.pred_net.parameters()),
                     lr=config.learning_rate,
                     weight_decay=config.weight_decay,
+                    momentum=config.momentum,
                 )
             case "adam":
                 self.optimizer = torch.optim.Adam(
