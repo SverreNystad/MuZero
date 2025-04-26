@@ -128,7 +128,7 @@ class NeuralNetworkManager:
         episodes_seen = 0
 
         for _ in trange(self.mbs):
-            batch_eps, batch_pos, is_weights = replay_buffer.sample_batch(self.mbs)
+            batch_eps, batch_pos, is_weights, batch_game_indices = replay_buffer.sample_batch(self.mbs)
 
             if not batch_eps:  # buffer still warming-up
                 return 0.0
@@ -168,8 +168,10 @@ class NeuralNetworkManager:
                 batch_total_loss += step_loss
 
                 td_errors.append(step_loss.detach().abs().item())
-                buf_game_indices.append(replay_buffer._games.index(episode))
+                # store the TD-error for PER priority update
+                buf_game_indices.append(batch_game_indices[ep_idx])
                 buf_pos_indices.append(pos)
+
                 episodes_seen += 1
 
             if episodes_seen == 0:

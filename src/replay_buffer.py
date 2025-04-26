@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import numpy as np
 import torch
 
+import wandb
 from src.training_data_generator import Episode
 
 
@@ -56,6 +57,27 @@ class ReplayBuffer:
             self._insert(episode, prios)
             self._trim()
 
+        # Log the average amount of states in each episode
+        avg_states = np.mean([len(ep.chunks) for ep in self._games])
+        rewards = [
+            sum(chunk.reward for chunk in ep.chunks) for ep in self._games
+        ]  # [chunk.reward for ep, _ in self.episode_buffer for chunk in ep.chunks]
+        if len(rewards) > 0:
+            median_reward = np.median(rewards)
+            max_reward = np.max(rewards)
+        else:
+            median_reward = 0
+            max_reward = 0
+
+        wandb.log(
+            {
+                "replay/average_states_per_episode": avg_states,
+                "replay/total_episodes_in_buffer": len(self._games),
+                "replay/max_reward": max_reward,
+                "replay/median_reward": median_reward,
+            }
+        )
+
     def sample_batch(self, batch_size: int):
         """Return lists (episodes, positions, weights) ready for training."""
         if not self._games:
@@ -80,7 +102,8 @@ class ReplayBuffer:
 
         episodes = [e for (e, _, _) in samples]
         positions = [p for (_, p, _) in samples]
-        return episodes, positions, weights
+
+        return episodes, positions, weights, list(game_indices)
 
     def update_priorities(self, batch_games: list[int], batch_pos: list[int], td_errors: np.ndarray) -> None:
         """Write back absolute TD-errors."""
