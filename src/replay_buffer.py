@@ -31,6 +31,7 @@ class ReplayBuffer:
         beta_start: float = 0.4,
         beta_frames: int = 500_000,
         eps: float = 1e-6,
+        device: str = "cpu",
     ):
         self.max_episodes = max_episodes
         self.max_steps = max_steps  # used for β-annealing
@@ -38,6 +39,7 @@ class ReplayBuffer:
         self.beta_start = beta_start
         self.beta_frames = beta_frames
         self.eps = eps
+        self.device = device
 
         self._games: list[Episode] = []
         self._priorities: list[np.ndarray] = []  # one 1-D array per game
@@ -97,7 +99,7 @@ class ReplayBuffer:
             samples.append((self._games[g], pos, weight))
 
         # normalise weights
-        weights = torch.tensor([w for *_, w in samples], dtype=torch.float32)
+        weights = torch.tensor([w for *_, w in samples], dtype=torch.float32, device=self.device)
         weights /= weights.max()
 
         episodes = [e for (e, _, _) in samples]

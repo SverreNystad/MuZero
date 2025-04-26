@@ -143,34 +143,34 @@ class NeuralNetworkManager:
             buf_game_indices = []
             buf_pos_indices = []
 
-            for ep_idx, (episode, pos, w) in enumerate(zip(batch_eps, batch_pos, is_weights)):
+            for ep_idx, (episode, k, w) in enumerate(zip(batch_eps, batch_pos, is_weights)):
                 max_k = len(episode.chunks) - (self.roll_ahead + 1)
-                if pos > max_k:
+                if k > max_k:
                     continue  # skip invalid sample (should be rare)
 
-                start_idx = max(0, pos - self.lookback)
+                start_idx = max(0, k - self.lookback)
 
-                Sb_k = [episode.chunks[i].state for i in range(start_idx, pos + 1)]
-                Ab_k = [episode.chunks[i].best_action for i in range(pos, pos + self.roll_ahead)]
-                Pb_k = [episode.chunks[i].policy for i in range(pos, pos + self.roll_ahead + 1)]
-                Vb_k = [episode.chunks[i].value for i in range(pos, pos + self.roll_ahead + 1)]
-                Rb_k = [episode.chunks[i + 1].reward for i in range(pos, pos + self.roll_ahead)]
+                Sb_k = [episode.chunks[i].state for i in range(start_idx, k + 1)]
+                Ab_k = [episode.chunks[i].best_action for i in range(k, k + self.roll_ahead)]
+                Pb_k = [episode.chunks[i].policy for i in range(k, k + self.roll_ahead + 1)]
+                Vb_k = [episode.chunks[i].value for i in range(k, k + self.roll_ahead + 1)]
+                Rb_k = [episode.chunks[i + 1].reward for i in range(k, k + self.roll_ahead)]
 
                 p_loss, v_loss, r_loss = self.bptt(Sb_k, Ab_k, (Pb_k, Vb_k, Rb_k))
 
                 # apply importance-sampling weight
                 weight = w.to(self.device)
-                step_loss = (p_loss + v_loss + r_loss) * weight
+                step_loss = p_loss + v_loss + r_loss
 
                 batch_policy_loss += p_loss * weight
                 batch_value_loss += v_loss * weight
                 batch_reward_loss += r_loss * weight
-                batch_total_loss += step_loss
+                batch_total_loss += step_loss * weight
 
                 td_errors.append(step_loss.detach().abs().item())
                 # store the TD-error for PER priority update
                 buf_game_indices.append(batch_game_indices[ep_idx])
-                buf_pos_indices.append(pos)
+                buf_pos_indices.append(k)
 
                 episodes_seen += 1
 
@@ -257,9 +257,9 @@ class NeuralNetworkManager:
         # Unroll for self.roll_ahead steps
         for i in range(self.roll_ahead):
             pred_p, pred_v = self.pred_net(latent_state)
-            t_p = torch.tensor(Pb_k[i], dtype=torch.float32, device=self.device)
-            t_v = torch.tensor([Vb_k[i]], dtype=torch.float32, device=self.device)
-            t_r = torch.tensor([Rb_k[i]], dtype=torch.float32, device=self.device)
+            t_p = torch.tensor(Pb_k[i], dtype=torch.float32).to(self.device)
+            t_v = torch.tensor([Vb_k[i]], dtype=torch.float32).to(self.device)
+            t_r = torch.tensor([Rb_k[i]], dtype=torch.float32).to(self.device)
 
             action = Ab_k[i]
             action = (
