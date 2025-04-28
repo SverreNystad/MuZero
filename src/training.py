@@ -225,7 +225,7 @@ class NeuralNetworkManager:
         # for each unroll step k = 0..w:
         #   z*_k = sum_{i=1..w-k} gamma^{i-1} * Rb_k[k+i-1] + gamma^{w-k} * Vb_k[w]
         # but easier to always bootstrap from Vb_k[k + remaining horizon]
-        for k in range(w):
+        for k in range(w + 1):
             # accumulate discounted rewards from r_{k+1} ... r_w
             accumulated_rewards = 0.0
             for i, r in enumerate(Rb_k[k:]):
