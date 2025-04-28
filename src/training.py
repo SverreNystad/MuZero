@@ -146,9 +146,9 @@ class NeuralNetworkManager:
                 # Rewards:  R* b,k = {r* b,k+1, …, r* b,k+w}
                 past_states = [episode.chunks[i].state for i in range(start_idx, k)]
                 past_actions = [episode.chunks[i].best_action for i in range(start_idx, k)]
-                rollout_actions = [episode.chunks[i].best_action for i in range(k, k + self.roll_ahead)]
-                Pb_k = [episode.chunks[i].policy for i in range(k, k + self.roll_ahead)]
-                Vb_k = [episode.chunks[i].value for i in range(k, k + self.roll_ahead)]
+                rollout_actions = [episode.chunks[i].best_action for i in range(k, k + self.roll_ahead + 1)]
+                Pb_k = [episode.chunks[i].policy for i in range(k, k + self.roll_ahead + 1)]
+                Vb_k = [episode.chunks[i].value for i in range(k, k + self.roll_ahead + 1)]
                 Rb_k = [episode.chunks[i].reward for i in range(k, k + self.roll_ahead + 1)]
 
                 # Compute z targets
@@ -220,7 +220,7 @@ class NeuralNetworkManager:
         Vb_k: list of length w+1 of values [v*_{k}, ..., v*_{k+w}]
         returns: list of length w+1 of z*_k targets
         """
-        w = len(Rb_k) - 1
+        w = self.roll_ahead
         z_targets = []
         # for each unroll step k = 0..w:
         #   z*_k = sum_{i=1..w-k} gamma^{i-1} * Rb_k[k+i-1] + gamma^{w-k} * Vb_k[w]
