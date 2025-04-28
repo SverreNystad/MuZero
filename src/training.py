@@ -139,14 +139,23 @@ class NeuralNetworkManager:
                 k = random.randrange(max_k + 1)
                 start_idx = max(0, k - self.lookback)
 
-                Sb_k = [episode.chunks[i].state for i in range(start_idx, k + 1)]
-                Ab_k = [episode.chunks[i].best_action for i in range(k, k + self.roll_ahead)]
-                Pb_k = [episode.chunks[i].policy for i in range(k, k + self.roll_ahead + 1)]
-                Vb_k = [episode.chunks[i].value for i in range(k, k + self.roll_ahead + 1)]
-                Rb_k = [episode.chunks[i + 1].reward for i in range(k, k + self.roll_ahead)]
+                # States:   Sb,k = {s_b,k−q, …, s_b,k}
+                # Actions:  Ab,k = {a_b,k+1, …, a_b,k+w}
+                # Policies: Π* b,k = {π_b,k, …, π_b,k+w}
+                # Values:   Z* b,k = {v* b,k, …, v* b,k+w}
+                # Rewards:  R* b,k = {r* b,k+1, …, r* b,k+w}
+                past_states = [episode.chunks[i].state for i in range(start_idx, k)]
+                past_actions = [episode.chunks[i].best_action for i in range(start_idx, k)]
+                rollout_actions = [episode.chunks[i].best_action for i in range(k, k + self.roll_ahead)]
+                Pb_k = [episode.chunks[i].policy for i in range(k, k + self.roll_ahead)]
+                Vb_k = [episode.chunks[i].value for i in range(k, k + self.roll_ahead)]
+                Rb_k = [episode.chunks[i].reward for i in range(k, k + self.roll_ahead + 1)]
+
+                # Compute z targets
+                Zb_k = self._compute_z_targets(Rb_k, Vb_k, self.config.discount_factor)
 
                 # Get component losses
-                p_loss, v_loss, r_loss = self.bptt(Sb_k, Ab_k, (Pb_k, Vb_k, Rb_k))
+                p_loss, v_loss, r_loss = self.bptt(past_states, past_actions, rollout_actions, (Pb_k, Zb_k, Rb_k))
                 step_loss = p_loss + v_loss + r_loss
 
                 batch_policy_loss += p_loss
@@ -205,9 +214,31 @@ class NeuralNetworkManager:
                 )
         return valid_episodes
 
+    def _compute_z_targets(self, Rb_k: list[Tensor], Vb_k: list[Tensor], gamma):
+        """
+        Rb_k: list of length w of rewards [r*_{k+1}, ..., r*_{k+w}]
+        Vb_k: list of length w+1 of values [v*_{k}, ..., v*_{k+w}]
+        returns: list of length w+1 of z*_k targets
+        """
+        w = len(Rb_k) - 1
+        z_targets = []
+        # for each unroll step k = 0..w:
+        #   z*_k = sum_{i=1..w-k} gamma^{i-1} * Rb_k[k+i-1] + gamma^{w-k} * Vb_k[w]
+        # but easier to always bootstrap from Vb_k[k + remaining horizon]
+        for k in range(w):
+            # accumulate discounted rewards from r_{k+1} ... r_w
+            accumulated_rewards = 0.0
+            for i, r in enumerate(Rb_k[k:]):
+                accumulated_rewards += (gamma ** (i - 1)) * r
+            # bootstrap from Vb_k[k + (w - k)] == Vb_k[w]
+            accumulated_rewards += (gamma ** (w - k)) * Vb_k[w]
+            z_targets.append(accumulated_rewards)
+        return z_targets
+
     def bptt(
         self,
-        Sb_k: list[Tensor],
+        past_observations: list[Tensor],
+        past_actions: list[Tensor],
         Ab_k: list[Tensor],
         PVR: tuple[Tensor, Tensor, Tensor],
     ) -> tuple[Tensor, Tensor, Tensor]:
@@ -222,11 +253,11 @@ class NeuralNetworkManager:
         Returns:
             Summed (policy_loss, value_loss, reward_loss).
         """
-        Pb_k, Vb_k, Rb_k = PVR
+        Pb_k, Zb_k, Rb_k = PVR
         history_frames = FrameRingBuffer(size=self.repr_net.history_length)
-        history_frames.fill(Frame(state=Sb_k[0], action=Ab_k[0]))
-        for i in range(1, len(Sb_k)):
-            history_frames.add(Frame(state=Sb_k[i], action=Ab_k[i]))
+        history_frames.fill(Frame(state=past_observations[0], action=past_actions[0]))
+        for i in range(1, len(past_observations)):
+            history_frames.add(Frame(state=past_observations[i], action=past_actions[i]))
 
         latent_state = self.repr_net(make_history_tensor(history_frames))
 
@@ -238,7 +269,7 @@ class NeuralNetworkManager:
         for i in range(self.roll_ahead):
             pred_p, pred_v = self.pred_net(latent_state)
             t_p = torch.tensor(Pb_k[i], dtype=torch.float32, device=self.device)
-            t_v = torch.tensor([Vb_k[i]], dtype=torch.float32, device=self.device)
+            t_v = torch.tensor([Zb_k[i]], dtype=torch.float32, device=self.device)
             t_r = torch.tensor([Rb_k[i]], dtype=torch.float32, device=self.device)
 
             action = Ab_k[i]
@@ -257,10 +288,13 @@ class NeuralNetworkManager:
             total_r += r_loss
 
         # final value only
-        _, final_v = self.pred_net(latent_state)
-        t_v_final = torch.tensor([Vb_k[self.roll_ahead]], dtype=torch.float32, device=self.device)
+        final_p, final_v = self.pred_net(latent_state)
+        t_v_final = torch.tensor([Zb_k[self.roll_ahead]], dtype=torch.float32, device=self.device)
         v_final_loss = self.value_loss(t_v_final, final_v[0])
+        t_p_final = torch.tensor(Pb_k[self.roll_ahead], dtype=torch.float32, device=self.device)
+        p_final_loss = self.policy_loss(t_p_final, final_p[0])
         total_v += v_final_loss
+        total_p += p_final_loss
 
         return total_p, total_v, total_r
 

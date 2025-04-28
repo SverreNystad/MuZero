@@ -113,6 +113,7 @@ class TrainingConfig(BaseModel):
     batch_size: int
     replay_buffer_size: int
     alpha: float  # priority exponent
+    discount_factor: float
     epochs: int
     betas: tuple[float, float]
     roll_ahead: int
@@ -127,7 +128,7 @@ class TrainingConfig(BaseModel):
     optimizer: str = "sgd"  # e.g.  "sgd", "adam", "adamw","rmsprop"
     momentum: float = 0.9
     # scheduler_milestones = Field(default=[8000, 20000])
-    scheduler_gamma: float = 0.97
+    scheduler_gamma: float = 0.99971
     scheduler_T_max: int = 40000  # total optimiser steps you expect
     scheduler_eta_min: float = 1e-5  # final LR (10-4 × LR₀)
 

@@ -29,6 +29,7 @@ training:
   weight_decay: 0.0001
   epochs: 100
   batch_size: 32
+  discount_factor: 0.998
   replay_buffer_size: 40
   alpha: 0.6
   betas: [0.9, 0.999]

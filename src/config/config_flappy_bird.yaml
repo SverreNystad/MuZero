@@ -10,7 +10,7 @@ environment:
 
 # Monte Carlo Tree Search (MCTS) configuration
 training_data_generator:
-  num_episodes: 10                   # total number of episodes for self-play/learning
+  num_episodes: 1                   # total number of episodes for self-play/learning
   max_steps_per_episode: 500
   total_time: 3600
   epsilon: 1.0
@@ -28,14 +28,15 @@ training_data_generator:
 training:
   learning_rate: 0.001
   weight_decay: 0.0001
+  discount_factor: 0.998
   epochs: 100
   batch_size: 32
   replay_buffer_size: 100
-  alpha: 0.8
+  alpha: 0.6
   betas: [0.9, 0.999]
   look_back: 4
   roll_ahead: 5
-  mini_batch_size: 256
+  mini_batch_size: 10
   reward_coefficient: 1.0 # 0.25
   value_coefficient: 1.0 # 0.5
   policy_coefficient: 1.0
