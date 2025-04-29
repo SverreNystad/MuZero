@@ -1,11 +1,8 @@
 from typing import Any, Literal
 
 import torch
+from flappy_bird_gymnasium.envs.constants import PIPE_HEIGHT
 from flappy_bird_gymnasium.envs.flappy_bird_env import FlappyBirdEnv
-from flappy_bird_gymnasium.envs.constants import (
-    PIPE_HEIGHT,
-)
-
 from gym.spaces.discrete import Discrete
 from pydantic import BaseModel
 from torch import Tensor
@@ -54,16 +51,16 @@ class FlappyBird(Environment):
     #     obs_t = torch.from_numpy(self.render()).float().permute(2, 0, 1).to(self.device) # (3, 512, 288)
     #     obs_t = obs_t.unsqueeze(0) # (1, 3, 512, 288)
     #     self.last_obs = obs_t
-    #     
+    #
     #     return obs_t, reward, done
     def step(self, action: int) -> tuple[Tensor, float, bool]:
         step = self.env.step(action)
         _, reward, done, _ = step[0], step[1], step[2], step[3]
-        obs_t = torch.from_numpy(self.render()).float().permute(2, 0, 1).to(self.device) # (3, 512, 288)
-        obs_t = obs_t.unsqueeze(0) # (1, 3, 512, 288)
+        obs_t = torch.from_numpy(self.render()).float().permute(2, 0, 1).to(self.device)  # (3, 512, 288)
+        obs_t = obs_t.unsqueeze(0)  # (1, 3, 512, 288)
         self.last_obs = obs_t
-        
-        #find first unpassed pipe
+
+        # find first unpassed pipe
         player_y = self.env._player_y
         player_x = self.env._player_x
         min_distance = 1000
@@ -74,13 +71,12 @@ class FlappyBird(Environment):
             if distance > 0 and distance < min_distance:
                 min_distance = distance
                 closest_pipe = i
-        
+
         gap_top = self.env._upper_pipes[closest_pipe]["y"] + PIPE_HEIGHT
         gap_bottom = self.env._lower_pipes[closest_pipe]["y"]
         if gap_top < player_y < gap_bottom:
-            reward = 0.2
+            reward = 0.5
         return obs_t, reward, done
-        
 
     def get_state(self) -> Tensor:
         """
@@ -94,7 +90,6 @@ class FlappyBird(Environment):
         obs_t = obs_t.unsqueeze(0)  # (1, 3, 512, 288)
         self.last_obs = obs_t
         return obs_t
-
 
     def render(self) -> Any:
         return self.env.render()
