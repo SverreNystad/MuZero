@@ -136,7 +136,7 @@ class NeuralNetworkManager:
                     # Not enough steps to do roll_ahead; skip
                     continue
 
-                k = random.randrange(max_k + 1)
+                k = random.randrange(self.lookback, max_k + 1)
                 start_idx = max(0, k - self.lookback)
 
                 # States:   Sb,k = {s_b,k−q, …, s_b,k}
