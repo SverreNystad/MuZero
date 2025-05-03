@@ -29,6 +29,7 @@ class MCTSConfig(BaseModel):
     discount_factor: float = 1.0
     dirichlet_alpha: float = 0.3
     noise_frac: float = 0.25
+    visualize: bool = False
 
 
 class ConvLayerConfig(BaseModel):
