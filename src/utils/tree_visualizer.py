@@ -2,9 +2,10 @@ from typing import Any, Tuple
 import time
 import pygame
 from src.search.nodes import Node
+import math
 
-WINDOW_WIDTH = 800
-WINDOW_HEIGHT = 600
+WINDOW_WIDTH = 1280
+WINDOW_HEIGHT = 720
 
 class TreeVisualizer:
     def __init__(self, root: Node) -> None:
@@ -14,19 +15,13 @@ class TreeVisualizer:
         pygame.display.set_caption("Tree Visualizer")
 
         self.root = root
-
-        # visual parameters
         self.radius = 5
-        self.y_step = 80          # fixed vertical step
-        self.base_x = 40          # base horizontal step
-        self.pan_speed = 40       # pixels to move per arrow-key press
-
-        # world-to-screen transform
-        # start centered (root at world (0,0) → screen (center,20))
+        self.y_step = 80
+        self.base_x = 40
+        self.pan_speed = 40
         self.zoom = 1.0
         self.offset = (WINDOW_WIDTH // 2, 20)
 
-        # initialize root world-coords
         self.root.pos = (0, 0)
 
     def __call__(self, tick_callable, max_itr) -> None:
@@ -62,9 +57,8 @@ class TreeVisualizer:
             if tick_callable:
                 tick_callable()
                 itr += 1
-                time.sleep(0.01)
-
-            clock.tick(60)  # up to 30 FPS
+                time.sleep(1)
+            clock.tick(60)
 
         pygame.quit()
 
@@ -85,28 +79,42 @@ class TreeVisualizer:
             depth += 1
         return depth
 
+    def _check_if_any_nodes_collide(self, pos: Tuple[int , int]) -> bool:
+        """Check if any nodes collide with each other."""
+        queue = [self.root]
+
+        while len(queue) > 0:
+            node = queue.pop(0)
+            if node.pos == pos:
+                return True
+
+            for child in node.children.values():
+                queue.append(child)
+
+        return False
+
     def bfs_draw(self) -> None:
-        # BFS queue holds (node, depth)
         queue = [(self.root, 0)]
 
         while queue:
             node, depth = queue.pop(0)
             p_screen = self.to_screen(node.pos)
-
-            # draw the node
             self._draw_node(p_screen)
 
-            # draw & position its children
             for i, child in enumerate(node.children.values()):
-                # more spacing the deeper you go: base_x * (depth+1)
                 sign = -1 if i == 0 else 1
 
-                dx = sign * self.base_x * (self._get_depth(node))
+                dx = sign * self.base_x * (self._get_depth(node)/(abs(self._get_depth(node) - self._get_depth(self.root)) + 1) * self._get_depth(self.root) / 4)
 
-                child.pos = (node.pos[0] + dx, node.pos[1] + self.y_step)
+                pos = (node.pos[0] + dx,
+                    node.pos[1] + self.y_step)
+                collision = self._check_if_any_nodes_collide(pos)
+
+                if collision:
+                    pos = (pos[0] + self.radius * 3, pos[1])
+
+                child.pos = pos
                 c_screen = self.to_screen(child.pos)
-
-                # draw line parent → child
                 pygame.draw.line(self.screen,
                                  (0, 0, 0),
                                  p_screen,
