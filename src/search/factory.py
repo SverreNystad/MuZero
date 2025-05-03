@@ -52,5 +52,6 @@ def create_mcts(
         max_time=config.max_time,
         dirichlet_alpha=config.dirichlet_alpha,
         noise_frac=config.noise_frac,
+        visualize=config.visualize,
     )
     return mcts_instance

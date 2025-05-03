@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Union
+from typing import Tuple, Union
 
 import torch
 
@@ -7,8 +7,7 @@ import torch
 @dataclass
 class Node:
     """
-    Represents a node in the MCTS search tree.
-    """
+    Represents a node in the MCTS search tree. """
 
     latent_state: torch.Tensor
     parent: Union["Node", None] = None
@@ -18,6 +17,9 @@ class Node:
     value_sum: float = field(default_factory=float)
     reward: float = field(default_factory=float)
     policy_priority: float = field(default_factory=float)
+
+    # for visualization purposes
+    pos: Tuple[int, int] = field(default_factory=lambda: (400, 100))
 
     def add_child(self, latent_state: torch.Tensor, action: torch.Tensor) -> "Node":
         """
