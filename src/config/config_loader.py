@@ -100,6 +100,7 @@ class TrainingDataGeneratorConfig(BaseModel):
     epsilon: float
     epsilon_decay: float
     random_action_probability: list[float] | None = None
+    min_epsilon: float = 0.25  # MuZero has a minimum random action probability of 0.25
 
 
 class ValidationConfig(BaseModel):

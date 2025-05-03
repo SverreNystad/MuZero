@@ -87,6 +87,7 @@ class TrainingDataGenerator:
         )
         self.epsilon: float = config.epsilon
         self.epsilon_decay: float = config.epsilon_decay
+        self.min_epsilon: float = config.min_epsilon
         self.config = config
 
     def generate_training_data(self, training_steps: int = 0) -> list[Episode]:
@@ -165,7 +166,7 @@ class TrainingDataGenerator:
         """
         Calculate the decayed epsilon value based on the number of training steps.
         """
-        return max(self.epsilon * (self.epsilon_decay**training_steps), 0.0001)
+        return max(self.epsilon * (self.epsilon_decay**training_steps), self.min_epsilon)
 
 
 def _make_actions_tensor(env: Environment, device) -> Tensor:
