@@ -8,7 +8,13 @@ np.random.seed(0)
 
 
 class ReplayBuffer:
-    def __init__(self, buffer_size: int, batch_size: int, alpha=0.6):
+    def __init__(
+        self,
+        buffer_size: int,
+        batch_size: int,
+        alpha=0.6,
+        beta: float = 1.0,
+    ):
         """
         Prioritized Replay Buffer.
         Args:
@@ -26,6 +32,7 @@ class ReplayBuffer:
         self.buffer_capacity = buffer_size
         self.batch_size = batch_size
         self.alpha = alpha
+        self.beta = beta
 
         # Store (episode, priority)
         self.episode_buffer: list[tuple[Episode, float]] = []
@@ -62,7 +69,7 @@ class ReplayBuffer:
             }
         )
 
-    def sample_batch(self) -> tuple[list[Episode], list[int]]:
+    def sample_batch(self) -> tuple[list[Episode], list[int], list[float]]:
         """
         Sample a batch of episodes from the buffer.
         The sampling is done based on the priorities of the episodes.
@@ -73,36 +80,43 @@ class ReplayBuffer:
         Returns:
             batch(list[Episode]): Sampled episodes
             indices(list[int]): Indices of the sampled episodes in the buffer
+            is_weights(list[float]): Importance Sampling weights for each episode
         """
         if not self.episode_buffer:
-            return ([], [])
+            return [], [], []
 
-        # Collect priorities
+        # Collect and scale priorities
         priorities = [p for _, p in self.episode_buffer]
         scaled = [p**self.alpha for p in priorities]
-
-        # Build distribution & sample
         total = sum(scaled)
         if total < 1e-8:
             # fallback to uniform if all priorities are ~0
             probs = [1.0 / len(scaled)] * len(scaled)
         else:
-            probs = [v / total for v in scaled]
+            probs = [s / total for s in scaled]
 
+        # Sample indices
         indices = np.random.choice(
             len(self.episode_buffer),
             size=min(self.batch_size, len(self.episode_buffer)),
-            replace=False,
+            # With small buffers you may under‐sample high-priority episodes if you force them to be unique in a batch
+            # We should allow duplicates of high-priority episodes
+            replace=True,
             p=probs,
         )
-        batch = []
-        for idx in indices:
-            batch.append(self.episode_buffer[idx][0])
+
+        # Compute IS-weights
+        N = len(self.episode_buffer)
+        is_weights = [(N * probs[i]) ** (-self.beta) for i in indices]
+        max_w = max(is_weights)
+        is_weights = [w / max_w for w in is_weights]
+
+        batch = [self.episode_buffer[i][0] for i in indices]
 
         sampling_entropy = -np.dot(probs, np.log(np.array(probs, dtype=np.float32) + 1e-8))
         wandb.log({"replay/sampling_entropy": sampling_entropy})
 
-        return batch, indices
+        return batch, list(indices), is_weights
 
     def update_priorities(self, indices: list[int], new_errors: list[float]) -> None:
         """
@@ -111,8 +125,7 @@ class ReplayBuffer:
         """
         for idx, err in zip(indices, new_errors):
             updated = abs(err) + 1e-6
-            if updated > self.max_priority:
-                self.max_priority = updated
+            self.max_priority = max(self.max_priority, updated)
             ep, _ = self.episode_buffer[idx]
             self.episode_buffer[idx] = (ep, updated)
 

@@ -113,7 +113,7 @@ class NeuralNetworkManager:
         Returns average batch loss.
         """
         for mb in trange(self.mbs):
-            current_batch, indices = replay_buffer.sample_batch()
+            current_batch, indices, is_weights = replay_buffer.sample_batch()
             current_batch = self._filter_for_valid_episodes(current_batch)
 
             # Zero gradients
@@ -126,6 +126,7 @@ class NeuralNetworkManager:
             batch_reward_loss = torch.zeros(1, dtype=torch.float32, device=self.device)
             errors_for_priorities = []
             ep_indices_used = []
+            used_weights = []
 
             for local_idx, episode in enumerate(current_batch):
                 # local_idx is the index within the mini-batch,
@@ -158,20 +159,25 @@ class NeuralNetworkManager:
                 p_loss, v_loss, r_loss = self.bptt(past_states, past_actions, rollout_actions, (Pb_k, Zb_k, Rb_k))
                 step_loss = p_loss + v_loss + r_loss
 
+                w = is_weights[local_idx]
+                weighted = w * step_loss
+                batch_total_loss += weighted
+                used_weights.append(w)
+
                 batch_policy_loss += p_loss
                 batch_value_loss += v_loss
                 batch_reward_loss += r_loss
-                batch_total_loss += step_loss
 
                 errors_for_priorities.append(step_loss.detach().abs().item())
                 ep_indices_used.append(global_idx)
 
-            if len(current_batch) > 0:
+            if ep_indices_used:
                 # Average over episodes
-                batch_policy_loss /= len(current_batch)
-                batch_value_loss /= len(current_batch)
-                batch_reward_loss /= len(current_batch)
-                batch_total_loss /= len(current_batch)
+                norm = sum(used_weights)
+                batch_total_loss /= norm
+                batch_policy_loss /= norm
+                batch_value_loss /= norm
+                batch_reward_loss /= norm
 
                 # Backprop and step
                 batch_total_loss.backward()
