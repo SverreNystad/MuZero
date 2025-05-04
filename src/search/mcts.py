@@ -5,14 +5,13 @@ import torch
 
 from src.neural_networks.neural_network import DynamicsNetwork, PredictionNetwork
 from src.search.expansion import expand_node
-from src.utils.tree_visualizer import TreeVisualizer
 from src.search.nodes import Node
 from src.search.strategies import (
     BackpropagationStrategy,
     SelectionStrategy,
     SimulationStrategy,
 )
-
+from src.utils.tree_visualizer import TreeVisualizer
 
 
 class MCTS:
@@ -50,7 +49,8 @@ class MCTS:
         # Add Dirichlet noise to the root node.
         self._add_dirichlet_noise(root)
 
-        visualizer = TreeVisualizer(root)
+        if self.visualize:
+            visualizer = TreeVisualizer(root)
 
         def callable() -> None:
             self._step(root)
@@ -66,8 +66,7 @@ class MCTS:
                     self._step(root)
                     itr += 1
             else:
-                visualizer(callable, self.max_itr) # Comment this if you want to run without visualization
-
+                visualizer(callable, self.max_itr)
 
         utility = root.value_sum / root.visit_count
         tree_policy = _soft_max([child_node.value_sum for child_node in root.children.values()])
