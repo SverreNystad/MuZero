@@ -1,0 +1,17 @@
+@startuml
+
+
+collections "Learners"         as L
+queue  "Replay Buffer"      as RB
+rectangle "Parameter Server"   as PS
+collections "Actors"           as A
+
+L  -right->  RB : Sample prioritized episodes
+RB -left->  L  : Return episodes
+
+L  -down->  PS : Push gradients
+PS -up->  L  : Broadcast updated weights
+
+PS -->  A  : Broadcast updated weights
+A  -up->  RB : Send episodes
+@enduml
