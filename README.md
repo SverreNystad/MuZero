@@ -17,16 +17,12 @@ This project is a Python implementation of the [**MuZero**](https://arxiv.org/pd
 
 Check out our presentation video below for an in-depth overview:
 
-<video width="320" height="240" controls>
-  <source src="https://youtu.be/2GOIBhZgXrA" type="video/mp4">
-</video>
+[![Watch MuZero Presentation](https://img.youtube.com/vi/2GOIBhZgXrA/maxresdefault.jpg)](https://youtu.be/2GOIBhZgXrA)
 
 
 Our MuZero in action, demonstrating performance on the Car Racing game in OpenAI Gym:
 
-<video width="320" height="240" controls>
-  <source src="https://raw.githubusercontent.com/SverreNystad/Muzero/main/docs/images/car_racing_simulation_21.mp4" type="video/mp4">
-</video>
+[![Watch Results](https://img.youtube.com/vi/pYpWq2wOTsU/0.jpg)](https://youtu.be/pYpWq2wOTsU)
 
 ## Overview
 MuZero is an advanced **model-based** reinforcement learning algorithm that jointly learns **a dynamics model**, **a value function**, and **a policy** through self-play training. Unlike traditional systems like AlphaZero, MuZero does not require explicit knowledge of the true environment dynamics. Instead the model gets the last 32 frames as input and it learns its own abstract internal representation of the environment. This allows for using Monte Carlo Tree Search (MCTS) to plan ahead in latent space making it capable of sophisticated planning, resulting in superhuman performance across various complex environments.
