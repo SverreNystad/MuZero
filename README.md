@@ -18,14 +18,14 @@ This project is a Python implementation of the [**MuZero**](https://arxiv.org/pd
 Check out our presentation video below for an in-depth overview:
 
 <video width="320" height="240" controls>
-  <source src="https://drive.google.com/file/d/1IuC-k_D3HP1ETidpQR6LXNWoOgg99JGW/view?usp=sharing" type="video/mp4">
+  <source src="https://youtu.be/2GOIBhZgXrA" type="video/mp4">
 </video>
 
 
 Our MuZero in action, demonstrating performance on the Car Racing game in OpenAI Gym:
 
 <video width="320" height="240" controls>
-  <source src="docs/images/car_racing_simulation_21.mp4" type="video/mp4">
+  <source src="https://raw.githubusercontent.com/SverreNystad/Muzero/main/docs/images/car_racing_simulation_21.mp4" type="video/mp4">
 </video>
 
 ## Overview
